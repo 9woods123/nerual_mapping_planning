@@ -18,7 +18,7 @@ def test_neural_rendering_model():
     output_dim = 1  # 假设输出 SDF，维度为 1
 
     # 初始化模型
-    model = NeuralRenderingModel(input_dim=input_dim, hidden_dim=hidden_dim, encoding_dim=encoding_dim, output_dim=output_dim)
+    model = NeuralRenderingModel(input_dim=input_dim, hidden_dim=hidden_dim, encoding_dim=encoding_dim)
     model.to(device)  # 将模型移动到设备
 
     # 创建随机输入数据 (batch_size, input_dim)
