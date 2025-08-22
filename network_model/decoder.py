@@ -14,6 +14,7 @@ class GeometryDecoder(nn.Module):
         super(GeometryDecoder, self).__init__()
 
         self.output_dim=h_dim+s_dim
+        self.h_dim=h_dim
 
         # MLP 用于生成特征向量 h 和 SDF 值 s
         self.fc1 = nn.Linear(input_dim, hidden_dim)
@@ -42,7 +43,10 @@ class GeometryDecoder(nn.Module):
     def get_decoder_output_dim(self):
 
         return self.output_dim
+    
+    def get_geo_features_output_dim(self):
 
+        return self.h_dim
 
 class ColorDecoder(nn.Module):
     def __init__(self, h_dim, hidden_dim, color_dim=3):

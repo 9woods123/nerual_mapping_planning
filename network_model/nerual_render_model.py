@@ -31,9 +31,11 @@ class NeuralRenderingModel(nn.Module):
         ## 几何解码器 outputs geo features "h",  and SDF value s.
         
         # 颜色解码器
-        self.color_decoder = ColorDecoder(encoding_dim + self.geometry_decoder.get_decoder_output_dim(), hidden_dim=64, color_dim=3)  # RGB 输出
+        
+        self.color_decoder = ColorDecoder(encoding_dim + self.geometry_decoder.get_geo_features_output_dim(), hidden_dim=64, color_dim=3)  # RGB 输出
         
     
+
     def forward(self, x):
         """
         前向传播：通过 One-Blob 和 Hash Grid 编码，然后生成几何信息和颜色
@@ -49,7 +51,6 @@ class NeuralRenderingModel(nn.Module):
         geometry_input = torch.cat([oneblob_features, hash_grid_features], dim=-1)  # 将 One-Blob 和 Hash Grid 特征拼接
         geo_features, sdf = self.geometry_decoder(geometry_input)  # 生成几何信息（如 SDF）
         
-
 
         color_input = torch.cat([oneblob_features, geo_features], dim=-1)        # 将 One-Blob 特征和 Geometry Decoder 输出拼接
         rgb = self.color_decoder(color_input)        # 生成颜色（如 RGB）

@@ -14,7 +14,7 @@ def test_neural_rendering_model():
     # 模型参数
     input_dim = 3  # 假设输入是 3D 坐标（x, y, z）
     hidden_dim = 64
-    encoding_dim = 256
+    encoding_dim = 64
     output_dim = 1  # 假设输出 SDF，维度为 1
 
     # 初始化模型
@@ -28,6 +28,7 @@ def test_neural_rendering_model():
     # 打印模型结构
     print("Model architecture:")
     print(model)
+
 
     # 前向传播
     geo_features, sdf, rgb = model(x)
