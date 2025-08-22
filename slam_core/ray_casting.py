@@ -24,6 +24,7 @@ class RayCasting:
         self.M_f = M_f  # 每条射线的近表面采样点数
         self.d_s = d_s  # 深度偏移量
 
+
     def _sample_pixels(self, height, width):
         """
         随机采样像素索引
@@ -37,27 +38,6 @@ class RayCasting:
         sampled_indices = np.random.choice(total_pixels, sample_size, replace=False)
         return sampled_indices
 
-
-    def get_sample_points_by_camera_pose(self, depth_map, color_map, pose, height, width):
-        """
-        通过相机位姿生成射线，并沿射线方向均匀采样多个点
-        
-        :param depth_map: 深度图 (height, width)
-        :param color_map: 彩色图 (height, width, 3)
-        :param pose: 相机位姿，4x4 变换矩阵
-        :param height: 图像高度
-        :param width: 图像宽度
-        
-        :return: 采样的 3D 点、颜色和深度值
-        """
-        # 第一步：通过深度图和彩色图生成射线
-        rays_3d, rgb_values, depths = self.cast_rays(depth_map, color_map, pose, height, width)
-
-        # 第二步：沿射线方向均匀采样多个点，并进行近表面采样
-        sampled_points, sampled_colors, sampled_depths = self.sample_points_along_ray(pose, rays_3d, depths, rgb_values)
-
-        return sampled_points, sampled_colors, sampled_depths
-        
 
     def cast_rays(self, depth_map, color_map, pose, height, width):
         """
@@ -96,19 +76,23 @@ class RayCasting:
 
 
 
-    def sample_points_along_ray(self, ray_origin, ray_direction, depth_map, color_map, num_samples=64, M_c=None, M_f=None, d_s=None):
+    def sample_points_along_ray(self, ray_origin, rays_direction_list, depths_list , M_c=None, M_f=None, d_s=None):
         """
         深度引导采样：在射线的远近边界之间均匀采样 M_c 个点，
         对于有有效深度的射线，额外在 [d - d_s, d + d_s] 范围内均匀采样 M_f 个点
         
         :param ray_origin: 射线起点
         :param ray_direction: 射线方向
-        :param depth_map: 深度图
+        :param depths: 深度值
         :param M_c: 每条射线均匀采样的点数
         :param M_f: 每条射线的近表面采样点数
         :param d_s: 深度偏移量
         :return: 采样的 3D 点、颜色和深度值
         """
+
+        if len(rays_direction_list) != len(depths_list):
+            raise ValueError("rays_direction_list 和 depths_list 的长度不一致！")
+
         if M_c is None:
             M_c = self.M_c
         if M_f is None:
@@ -116,38 +100,36 @@ class RayCasting:
         if d_s is None:
             d_s = self.d_s
         
-        sampled_points = []
-        sampled_colors = []
+        sampled_3d_points = []
         sampled_depths = []
-
-
-
-        # 采样远近边界上的 M_c 个点
-        for i in range(M_c):
-            t = (i + 1) / M_c
-            sample_point = ray_origin + t * ray_direction
-            depth = depth_map[int(sample_point[1]), int(sample_point[0])]
-            color = color_map[int(sample_point[1]), int(sample_point[0])]
+        
+        for ray_id in range(len(rays_direction_list)):
             
-            sampled_points.append(sample_point)
-            sampled_colors.append(color)
-            sampled_depths.append(depth)
+            ray_direction=rays_direction_list[ray_id]
+            ray_direction = ray_direction / np.linalg.norm(ray_direction)  ## 二次确认归一化
+
+            depth= depths_list[ray_id]
+
+            # 采样远近边界上的 M_c 个点
+            for i in range(M_c):
+                t = (i + 1) / M_c
+
+                sampled_depth = t * depth
+                sample_point = ray_origin + sampled_depth * ray_direction
+
+                sampled_3d_points.append(sample_point)
+                sampled_depths.append(sampled_depth)
+
+            # 对于有有效深度的射线，采样 M_f 个近表面点
+            for j in range(M_f):
+                # 近表面点的深度采样范围是 [d - d_s, d + d_s]
+                t = (j + 1) / M_f
+
+                sampled_depth =  (depth - d_s + t * 2 * d_s) 
+                sample_point = ray_origin + sampled_depth * ray_direction  # 使用深度进行偏移
+                
+                sampled_3d_points.append(sample_point)
+                sampled_depths.append(sampled_depth)
 
 
-        # 对于有有效深度的射线，采样 M_f 个近表面点
-        for j in range(M_f):
-            # 近表面点的深度采样范围是 [d - d_s, d + d_s]
-            t = (j + 1) / M_f
-            surface_point = ray_origin + (depth - d_s + t * 2 * d_s) * ray_direction  # 使用深度进行偏移
-
-            # 采样该点的深度和颜色
-            depth = depth_map[int(surface_point[1]), int(surface_point[0])]
-            color = color_map[int(surface_point[1]), int(surface_point[0])]
-
-            # 将采样结果保存
-            sampled_points.append(surface_point)
-            sampled_colors.append(color)
-            sampled_depths.append(depth)
-
-
-        return sampled_points, sampled_colors, sampled_depths
+        return sampled_3d_points, sampled_depths
