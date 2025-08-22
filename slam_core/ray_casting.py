@@ -2,8 +2,9 @@ import torch
 import numpy as np
 
 
+
 class RayCasting:
-    def __init__(self, intrinsic_matrix, sample_ratio=0.1, num_samples=64, M_c=32, M_f=8, d_s=0.1):
+    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=10, M_f=4, d_s=0.1):
         """
         初始化射线投影类
         
@@ -19,7 +20,6 @@ class RayCasting:
         """
         self.intrinsic_matrix = intrinsic_matrix
         self.sample_ratio = sample_ratio  # 采样比例
-        self.num_samples = num_samples  # 每条射线采样的点数
         self.M_c = M_c  # 每条射线均匀采样的点数
         self.M_f = M_f  # 每条射线的近表面采样点数
         self.d_s = d_s  # 深度偏移量

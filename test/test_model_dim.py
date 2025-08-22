@@ -5,6 +5,19 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from network_model.nerual_render_model import NeuralRenderingModel
 
 import torch
+import torch
+
+allocated_memory = torch.cuda.memory_allocated()
+reserved_memory = torch.cuda.memory_reserved()
+free_memory = reserved_memory - allocated_memory
+
+allocated_memory_gb = allocated_memory / (1024 ** 3)
+reserved_memory_gb = reserved_memory / (1024 ** 3)
+free_memory_gb = free_memory / (1024 ** 3)
+
+print(f"Allocated memory: {allocated_memory_gb:.2f} GB")
+print(f"Reserved memory: {reserved_memory_gb:.2f} GB")
+print(f"Free memory: {free_memory_gb:.2f} GB")
 
 
 def test_neural_rendering_model():
