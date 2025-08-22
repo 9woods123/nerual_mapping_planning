@@ -45,16 +45,39 @@ def color_loss(pred_rgb, gt_rgb):
     """
     return torch.mean((pred_rgb - gt_rgb)**2)
 
-# 总损失函数
-def total_loss(pred_sdf, pred_rgb, gt_rgb, gt_depth, pred_d, tr):
+
+# 颜色损失函数
+def depth_loss(pred_depth, gt_depth):
+    """
+    计算颜色损失：用于评估预测的 RGB 和真实 RGB 之间的差异
+    """
+    return torch.mean((pred_depth - gt_depth)**2)
+
+
+def total_loss(pred_rgb, gt_rgb, pred_d, gt_depth):
     """
     计算总损失：结合 SDF 损失、自由空间损失、颜色损失等
     """
-    # 计算 SDF 损失
-    loss_sdf = sdf_surface_loss(pred_sdf, gt_depth, pred_d, tr)  # 使用近表面 SDF 损失
-    loss_fs = free_space_loss(pred_sdf, gt_depth, tr)  # 使用自由空间损失
+
     loss_color = color_loss(pred_rgb, gt_rgb)  # 颜色损失
+    loss_depth = depth_loss(gt_depth, pred_d)  # 颜色损失
 
     # 可调整损失权重
-    total_loss_value = loss_sdf + loss_fs + loss_color
-    return total_loss_value, loss_sdf, loss_fs, loss_color
+    total_loss_value = loss_color + loss_depth 
+    return total_loss_value
+
+
+
+# # 总损失函数
+# def total_loss(pred_sdf, pred_rgb, gt_rgb, gt_depth, pred_d, tr):
+#     """
+#     计算总损失：结合 SDF 损失、自由空间损失、颜色损失等
+#     """
+#     # 计算 SDF 损失
+#     loss_sdf = sdf_surface_loss(pred_sdf, gt_depth, pred_d, tr)  # 使用近表面 SDF 损失
+#     loss_fs = free_space_loss(pred_sdf, gt_depth, tr)  # 使用自由空间损失
+#     loss_color = color_loss(pred_rgb, gt_rgb)  # 颜色损失
+
+#     # 可调整损失权重
+#     total_loss_value = loss_sdf + loss_fs + loss_color
+#     return total_loss_value, loss_sdf, loss_fs, loss_color

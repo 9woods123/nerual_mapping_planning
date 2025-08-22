@@ -6,22 +6,77 @@ from network_model.nerual_render_model import NeuralRenderingModel
 from slam_core.ray_casting import RayCasting
 from slam_core.renderer import Renderer
 from network_model.loss_calculate import *
+import torch.optim as optim
 
 import torch
 import numpy as np
+import cv2
+import numpy as np
+
+# fx = 525.0  # focal length x
+# fy = 525.0  # focal length y
+# cx = 319.5  # optical center x
+# cy = 239.5  # optical center y
+
+# factor = 5000 # for the 16-bit PNG files
+# OR: factor = 1 # for the 32-bit float images in the ROS bag files
+
+
+def load_color_image(image_path):
+    """
+    读取并返回颜色图像
+    
+    :param image_path: 颜色图像的路径
+    :return: 读取的颜色图像 (height, width, 3) 类型为 uint8
+    """
+    color_image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # 读取为彩色图像
+    
+    if color_image is None:
+        raise FileNotFoundError(f"无法读取图像文件: {image_path}")
+    
+    color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)  # 转换为 RGB 格式
+    return np.array(color_image)  # 转为 NumPy 数组格式
+
+
+def load_depth_image(image_path, factor=5000):
+    """
+    读取并返回深度图像，并将其转化为真实的深度值
+    
+    :param image_path: 深度图像的路径
+    :param factor: 深度图像的缩放因子，通常为 5000 对应 16-bit 图像
+    :return: 真实深度图 (height, width) 类型为 float32
+    """
+    depth_image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)  # 读取为原始深度图像（16-bit 或 32-bit）
+    
+    if depth_image is None:
+        raise FileNotFoundError(f"无法读取深度图像文件: {image_path}")
+    
+    # 转换为实际的深度值
+    depth_image = depth_image.astype(np.float32) / factor
+    return depth_image  # 返回深度图像
+
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = NeuralRenderingModel(input_dim=3, hidden_dim=64, encoding_dim=64)
+neural_rendering_model = NeuralRenderingModel(input_dim=3, hidden_dim=256, encoding_dim=256)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
+optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.01)
+
+
 # 步骤 2: 初始化 RayCasting 和 Renderer 类
-intrinsic_matrix = np.array([[500, 0, 320], [0, 500, 240], [0, 0, 1]])  # 相机内参矩阵
+intrinsic_matrix = np.array([[525.0, 0, 319.5],
+                             [0, 525.0, 239.5],
+                             [0, 0, 1]])
+
 pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
-depth_map = np.random.rand(480, 640)  # 假设深度图
-color_map = np.random.rand(480, 640, 3)  # 假设颜色图
+
+
+color_map=load_color_image("sensor_data/color.png")
+depth_map=load_depth_image("sensor_data/depth.png")
+
 
 # 创建 RayCasting 和 Renderer 实例
 ray_casting = RayCasting(intrinsic_matrix)
@@ -43,16 +98,41 @@ sampled_depths_tensor = torch.tensor(np.array(sampled_depths), dtype=torch.float
 
 
 # 获取模型的输出
-geo_features, sdfs_tensors, rgbs_tensor = neural_rendering_model(sampled_points_tensor)
-
+pred_geo_features, pred_sdfs_tensors, pred_rgbs_tensor = neural_rendering_model(sampled_points_tensor)
 
 
 # 步骤 6: 使用 Renderer 类根据模型的输出进行最终渲染
 rendered_color, rendered_depth = renderer.render(
-    sampled_points_tensor, 
     sampled_depths_tensor, 
-    rgbs_tensor
+    pred_rgbs_tensor,
+    pred_sdfs_tensors
 )
+
+
+rgb_values = torch.tensor(rgb_values, dtype=torch.float32).to(device)  # 确保是Tensor
+
+num_epochs = 100  # 设置训练的轮数
+for epoch in range(num_epochs):
+    # 获取模型的输出
+    pred_geo_features, pred_sdfs_tensors, pred_rgbs_tensor = neural_rendering_model(sampled_points_tensor)
+
+    # 使用 Renderer 类根据模型的输出进行最终渲染
+    rendered_color, rendered_depth = renderer.render(
+        sampled_depths_tensor, 
+        pred_rgbs_tensor,
+        pred_sdfs_tensors
+    )
+
+    # 计算颜色损失
+    loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_depths_tensor)
+
+    # 打印损失
+    print(f'Epoch {epoch}/{num_epochs}, Loss: {loss.item()}')
+
+    # 反向传播和优化
+    optimizer.zero_grad()  # 清空梯度
+    loss.backward()        # 反向传播
+    optimizer.step()       # 更新模型参数
 
 
 
