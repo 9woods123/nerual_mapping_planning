@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from hash_grid_encoding import MultiResHashGrid
+from hash_grid_encoding.encoding import MultiResHashGrid
 
 
 

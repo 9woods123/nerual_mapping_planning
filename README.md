@@ -1,4 +1,4 @@
-# YOLOv8 环境配置指南（含RTX 5080显卡支持）
+# 环境配置指南（含RTX 5080显卡支持）
 
 ## 1. 环境准备
 
@@ -35,4 +35,8 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 # 从requirements.txt安装其他依赖
 pip install -r requirements.txt
 ```
+
+
+
+
 

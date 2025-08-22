@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from one_blob_encoding import OneBlobEncoding
-from encoder import  HashGridMLPEncoder
-from decoder import ColorDecoder,GeometryDecoder
+from network_model.one_blob_encoding import OneBlobEncoding
+from network_model.encoder import  HashGridMLPEncoder
+from network_model.decoder import ColorDecoder,GeometryDecoder
 
 
 class NeuralRenderingModel(nn.Module):
