@@ -19,8 +19,8 @@ class HashGridMLPEncoder(nn.Module):
         """
         super(HashGridMLPEncoder, self).__init__()
         
-        self.param_init(input_dim, hidden_dim=64, output_dim=64, num_layers=1, n_levels=16, n_features_per_level=2)
-
+        self.param_init(input_dim, hidden_dim, output_dim, num_layers, n_levels, n_features_per_level)
+        
         # 初始化 MultiResHashGrid 编码器
         self.hash_grid_encoder = MultiResHashGrid(
             dim=input_dim, 
@@ -29,7 +29,7 @@ class HashGridMLPEncoder(nn.Module):
         )
 
         # MLP 网络结构
-        layers = [nn.Linear(self.hash_grid_encoder.output_dim, hidden_dim), nn.ReLU()]
+        layers = [nn.Linear(self.hash_grid_encoder.output_dim, hidden_dim)]
 
         for _ in range(num_layers - 1):
             layers.append(nn.Linear(hidden_dim, hidden_dim))
@@ -65,22 +65,3 @@ class HashGridMLPEncoder(nn.Module):
         return self.output_dim
 
 
-# 测试网络
-if __name__ == "__main__":
-    # 假设输入维度是 3 (例如空间位置 x, y, z)，输出维度为 128
-    input_dim = 3
-    hidden_dim = 64
-    output_dim = 64
-    batch_size = 16
-    n_levels = 16
-    n_features_per_level = 2
-
-    # 初始化编码器
-    encoder = HashGridMLPEncoder(input_dim, hidden_dim, output_dim, n_levels=n_levels, n_features_per_level=n_features_per_level)
-
-    # 模拟输入
-    x = torch.rand(batch_size, input_dim)
-
-    # 前向传播
-    output = encoder(x)
-    print(f"Output shape: {output.shape}")  # 应该输出 (batch_size, output_dim)

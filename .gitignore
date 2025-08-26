@@ -1,0 +1,15 @@
+
+
+# Python (for lint)
+*.pyc
+
+yolo_venv/
+
+install/
+log/
+devel/
+logs/
+build/
+
+# Large ros bag files
+data/

@@ -23,16 +23,19 @@ class NeuralRenderingModel(nn.Module):
         super(NeuralRenderingModel, self).__init__()
         
         # One-Blob 编码器
-        self.oneblob_encoding = OneBlobEncoding(input_dim, encoding_dim)
+        self.oneblob_encoding = OneBlobEncoding(input_dim, encoding_dim,output_dim=encoding_dim)
         
         # Hash Grid 编码器
-        self.hash_grid_encoder = HashGridMLPEncoder(input_dim, hidden_dim=64, output_dim=64)
+        self.hash_grid_encoder = HashGridMLPEncoder(input_dim, hidden_dim=256, output_dim=256)
 
         # 几何解码器
         self.geometry_decoder = GeometryDecoder(encoding_dim + self.hash_grid_encoder.get_encoder_output_dim(), hidden_dim=64, h_dim=64, s_dim=1)  # SDF 或其他几何信息
         
         # 颜色解码器
         self.color_decoder = ColorDecoder(encoding_dim + self.geometry_decoder.get_geo_features_output_dim(), hidden_dim=64, color_dim=3)  # RGB 输出
+        
+
+
         
     def forward(self, x):
         """
@@ -50,6 +53,8 @@ class NeuralRenderingModel(nn.Module):
         
         color_input = torch.cat([oneblob_features, geo_features], dim=-1)        # 将 One-Blob 特征和 Geometry Decoder 输出拼接
         rgb = self.color_decoder(color_input)        # 生成颜色（如 RGB）
+
+
 
         return geo_features, sdf, rgb
 

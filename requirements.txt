@@ -1,8 +1,14 @@
 scikit-image
-pytorch_lightning
+torch
+torchvision
+torchaudio
+
 imageio
 numpy
 matplotlib
 tqdm
 
 rospkg
+
+opencv-python
+

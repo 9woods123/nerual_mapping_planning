@@ -6,6 +6,8 @@ from network_model.nerual_render_model import NeuralRenderingModel
 from slam_core.ray_casting import RayCasting
 from slam_core.renderer import Renderer
 from network_model.loss_calculate import *
+from utils.utils import *
+
 import torch.optim as optim
 
 import torch
@@ -35,6 +37,8 @@ def load_color_image(image_path):
         raise FileNotFoundError(f"无法读取图像文件: {image_path}")
     
     color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)  # 转换为 RGB 格式
+
+
     return np.array(color_image)  # 转为 NumPy 数组格式
 
 
@@ -73,47 +77,41 @@ intrinsic_matrix = np.array([[525.0, 0, 319.5],
 pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
 
-
 color_map=load_color_image("sensor_data/color.png")
 depth_map=load_depth_image("sensor_data/depth.png")
+color_map, c_min_val, c_max_val = normalize_numpy(color_map, 0, 255)
+
+
+
 
 
 # 创建 RayCasting 和 Renderer 实例
 ray_casting = RayCasting(intrinsic_matrix)
 renderer = Renderer(neural_rendering_model)
 
+
 # 步骤 3: 生成射线数据
 rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, pose, 480, 640)
 
 # 步骤 4: 沿射线采样
 sampled_points, sampled_depths = ray_casting.sample_points_along_ray(
-    ray_origin=np.array([0, 0, 0]),  # 射线起点
-    rays_direction_list=rays_3d,
-    depths_list=depths
+ray_origin=np.array([0, 0, 0]),  # 射线起点
+rays_direction_list=rays_3d,
+depths_list=depths
 )
 
-
+# 转成 Tensor 并移动到设备
 sampled_points_tensor = torch.tensor(np.array(sampled_points), dtype=torch.float32).to(device)
 sampled_depths_tensor = torch.tensor(np.array(sampled_depths), dtype=torch.float32).to(device)
+sampled_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_depths_tensor, 0, 10.0)
 
 
-# 获取模型的输出
-pred_geo_features, pred_sdfs_tensors, pred_rgbs_tensor = neural_rendering_model(sampled_points_tensor)
-
-
-# 步骤 6: 使用 Renderer 类根据模型的输出进行最终渲染
-rendered_color, rendered_depth = renderer.render(
-    sampled_depths_tensor, 
-    pred_rgbs_tensor,
-    pred_sdfs_tensors
-)
-
-
-rgb_values = torch.tensor(rgb_values, dtype=torch.float32).to(device)  # 确保是Tensor
+rgb_values = np.array(rgb_values, dtype=np.float32)  # list -> ndarray
+rgb_values = torch.from_numpy(rgb_values).to(device)  # ndarray -> Tensor
 
 num_epochs = 100  # 设置训练的轮数
 for epoch in range(num_epochs):
-    # 获取模型的输出
+
     pred_geo_features, pred_sdfs_tensors, pred_rgbs_tensor = neural_rendering_model(sampled_points_tensor)
 
     # 使用 Renderer 类根据模型的输出进行最终渲染
