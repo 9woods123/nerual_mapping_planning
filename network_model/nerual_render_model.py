@@ -58,3 +58,33 @@ class NeuralRenderingModel(nn.Module):
 
         return geo_features, sdf, rgb
 
+
+
+class SimpleMLPModel(nn.Module):
+    def __init__(self, input_dim=3, hidden_dim=128, num_layers=4):
+        """
+        简单的 MLP 网络，直接从输入坐标预测 SDF 和 RGB
+
+        :param input_dim: 输入维度（如 3D 坐标）
+        :param hidden_dim: 每层隐藏层维度
+        :param num_layers: 隐藏层层数
+        """
+        super(SimpleMLPModel, self).__init__()
+
+        layers = []
+        in_dim = input_dim
+        for i in range(num_layers):
+            layers.append(nn.Linear(in_dim, hidden_dim))
+            layers.append(nn.ReLU(inplace=True))
+            in_dim = hidden_dim
+        self.mlp = nn.Sequential(*layers)
+
+        # 输出层
+        self.sdf_head = nn.Linear(hidden_dim, 1)   # 输出 SDF
+        self.rgb_head = nn.Linear(hidden_dim, 3)   # 输出 RGB
+
+    def forward(self, x):
+        features = self.mlp(x)
+        sdf = self.sdf_head(features)              # (B, 1)
+        rgb = torch.sigmoid(self.rgb_head(features))  # (B, 3)，Sigmoid 确保范围 [0,1]
+        return None, sdf, rgb

@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from network_model.nerual_render_model import NeuralRenderingModel
+from network_model.nerual_render_model import NeuralRenderingModel,SimpleMLPModel
 from slam_core.ray_casting import RayCasting
 from slam_core.renderer import Renderer
 from network_model.loss_calculate import *
@@ -63,10 +63,10 @@ def load_depth_image(image_path, factor=5000):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = NeuralRenderingModel(input_dim=3, hidden_dim=256, encoding_dim=256)
+neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=512, num_layers=4)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
-optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.01)
+optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.001)
 
 
 # 步骤 2: 初始化 RayCasting 和 Renderer 类
@@ -79,9 +79,8 @@ pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
 color_map=load_color_image("sensor_data/color.png")
 depth_map=load_depth_image("sensor_data/depth.png")
+
 color_map, c_min_val, c_max_val = normalize_numpy(color_map, 0, 255)
-
-
 
 
 
@@ -104,17 +103,12 @@ depths_list=depths
 sampled_points_tensor = torch.tensor(np.array(sampled_points), dtype=torch.float32).to(device)
 sampled_depths_tensor = torch.tensor(np.array(sampled_depths), dtype=torch.float32).to(device)
 sampled_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_depths_tensor, 0, 10.0)
-# 假设点范围在 [0, depth_max]
-scale = 10.0  # 或者 depth_map 的最大深度
-sampled_points_tensor = sampled_points_tensor / scale  # 归一化到 0~1
-sampled_points_tensor = sampled_points_tensor * 2 - 1   # 再到 -1~1
-
 
 
 rgb_values = np.array(rgb_values, dtype=np.float32)  # list -> ndarray
 rgb_values = torch.from_numpy(rgb_values).to(device)  # ndarray -> Tensor
 
-num_epochs = 1000  # 设置训练的轮数
+num_epochs = 10  # 设置训练的轮数
 for epoch in range(num_epochs):
 
     pred_geo_features, pred_sdfs_tensors, pred_rgbs_tensor = neural_rendering_model(sampled_points_tensor)
@@ -126,8 +120,11 @@ for epoch in range(num_epochs):
         pred_sdfs_tensors
     )
 
+        # 打印前 10 个值对比
+    print("sampled_depths_tensor[:10]:", sampled_depths_tensor[:10].cpu().numpy())
+    print("rendered_depth[:10]:", rendered_depth[:10].cpu().detach().numpy())
     # 计算颜色损失
-    loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_depths_tensor)
+    loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_depths_tensor,pred_sdfs_tensors)
 
     # 打印损失
     print(f'Epoch {epoch}/{num_epochs}, Loss: {loss.item()}')

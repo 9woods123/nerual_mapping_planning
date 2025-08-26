@@ -27,17 +27,6 @@ def free_space_loss(pred_sdf, gt_depth, tr):
     loss_fs = torch.mean((pred_sdf[mask_free_space] - tr)**2)
     return loss_fs
 
-# SDF 损失（近表面点）
-def sdf_surface_loss(pred_sdf, gt_depth, pred_d, tr):
-    """
-    计算 SDF 损失：用于评估预测的 SDF 和真实的 SDF 之间的差异
-    """
-    # 获取在截断区域内的点
-    mask_truncation = torch.abs(gt_depth - pred_d) <= tr  # 截断区域
-    
-    loss_sdf = torch.mean((pred_sdf[mask_truncation] - (gt_depth[mask_truncation] - pred_d))**2)
-    return loss_sdf
-
 # 颜色损失函数
 def color_loss(pred_rgb, gt_rgb):
     """
@@ -53,31 +42,64 @@ def depth_loss(pred_depth, gt_depth):
     """
     return torch.mean((pred_depth - gt_depth)**2)
 
-
-def total_loss(pred_rgb, gt_rgb, pred_d, gt_depth):
+def free_space_loss(pred_sdfs, gt_depths, sampled_depths, truncation=0.1, scale=10.0):
     """
-    计算总损失：结合 SDF 损失、自由空间损失、颜色损失等
-    """
+    自由空间损失 (Free-space Loss)
+    对远离表面的点 |D - d| > tr，强制 SDF 接近截断距离 tr
 
+    :param pred_sdfs: (N,) 网络预测 SDF
+    :param gt_depths: (N,) 深度图真实值
+    :param sampled_depths: (N,) 射线采样点深度
+    :param truncation: 截断距离 tr
+    :param scale: 缩放因子（可用于放大判断阈值）
+    :return: 自由空间损失
+    """
+    mask = torch.abs(gt_depths - sampled_depths) > truncation / scale
+
+    if mask.any():
+        loss_fs = ((pred_sdfs[mask] - truncation) ** 2).mean()
+        return loss_fs
+    else:
+        return torch.tensor(0.0, device=pred_sdfs.device)
+
+
+def sdf_surface_loss(pred_sdfs, sampled_depths, gt_depths, truncation=0.1,scale=10.0):
+    """
+    近表面 SDF 监督 (Near-surface Supervision)
+    对 |D - d| <= tr 的点，监督 SDF 接近真实值 D - d
+
+    :param pred_sdfs: (N,) 网络预测 SDF
+    :param sampled_depths: (N,) 射线采样点深度
+    :param gt_depths: (N,) 深度图真实值
+    :param truncation: 截断距离 tr
+    :return: 近表面 SDF 损失
+    """
+    mask = torch.abs(gt_depths - sampled_depths) <= truncation/scale
+
+    if mask.any():
+        gt_sdf = gt_depths[mask] - sampled_depths[mask]
+        loss_surface = ((pred_sdfs[mask] - gt_sdf) ** 2).mean()
+        return loss_surface
+    else:
+        return torch.tensor(0.0, device=pred_sdfs.device)
+
+
+def total_loss(pred_rgb, gt_rgb, pred_d, gt_depth, pred_sdfs):
+    """
+    总损失计算，包含颜色损失、深度损失和 SDF 损失
+    """
     loss_color = color_loss(pred_rgb, gt_rgb)  # 颜色损失
-    loss_depth = depth_loss(gt_depth, pred_d)  # 颜色损失
+    loss_depth = depth_loss(gt_depth, pred_d)  # 深度损失
+    loss_surface = sdf_surface_loss(pred_sdfs, pred_d, gt_depth)
+    loss_free = free_space_loss(pred_sdfs, gt_depth, pred_d)
 
-    # 可调整损失权重
-    total_loss_value = loss_color + loss_depth 
+    total_loss_value = 0.1*loss_color + 0.01 * loss_depth + 1000*loss_surface + loss_free
+
+    print(f"[Loss] color: {loss_color.item():.6f}, "
+          f"depth: {0.01 * loss_depth.item():.6f}, "
+          f"surface_sdf: {1000*loss_surface.item():.6f}, "
+          f"free_sdf: {loss_free.item():.6f}, "
+          f"total: {total_loss_value.item():.6f}")
+
     return total_loss_value
 
-
-
-# # 总损失函数
-# def total_loss(pred_sdf, pred_rgb, gt_rgb, gt_depth, pred_d, tr):
-#     """
-#     计算总损失：结合 SDF 损失、自由空间损失、颜色损失等
-#     """
-#     # 计算 SDF 损失
-#     loss_sdf = sdf_surface_loss(pred_sdf, gt_depth, pred_d, tr)  # 使用近表面 SDF 损失
-#     loss_fs = free_space_loss(pred_sdf, gt_depth, tr)  # 使用自由空间损失
-#     loss_color = color_loss(pred_rgb, gt_rgb)  # 颜色损失
-
-#     # 可调整损失权重
-#     total_loss_value = loss_sdf + loss_fs + loss_color
-#     return total_loss_value, loss_sdf, loss_fs, loss_color

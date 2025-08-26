@@ -10,7 +10,7 @@ class Renderer:
         :param tr: 截断距离
         """
         self.model = model
-        self.tr = tr
+        self.tr = tr/10.0
 
     def render(self, depth_values, color_values, sdf_values):
         """
@@ -21,15 +21,11 @@ class Renderer:
         :return: 渲染后的颜色和深度
         """
         weights = self.compute_weights(sdf_values)
-        print("sdf_values min/max:", sdf_values.min().item(), sdf_values.max().item())
-        print("weights min/max:", weights.min().item(), weights.max().item())
-        print("weights mean:", weights.mean().item())
 
-        rendered_color = torch.sum(weights * color_values, dim=0) / torch.sum(weights, dim=0)
-        rendered_depth = torch.sum(weights * depth_values, dim=0) / torch.sum(weights, dim=0)
 
-        print("rendered_color min/max:", rendered_color.min().item(), rendered_color.max().item())
-        print("rendered_depth min/max:", rendered_depth.min().item(), rendered_depth.max().item())
+        rendered_color = torch.sum(weights * color_values, dim=0) /  (torch.sum(weights, dim=0)+ 0.0000001)
+        rendered_depth = torch.sum(weights * depth_values, dim=0) / (torch.sum(weights, dim=0)+ 0.0000001)
+
 
         return rendered_color, rendered_depth
 
