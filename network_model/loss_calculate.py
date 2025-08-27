@@ -57,7 +57,7 @@ def free_space_loss(pred_sdfs, gt_depths, sampled_depths, truncation=0.1, scale=
     mask = torch.abs(gt_depths - sampled_depths) > truncation / scale
 
     if mask.any():
-        loss_fs = ((pred_sdfs[mask] - truncation) ** 2).mean()
+        loss_fs = ((pred_sdfs[mask.squeeze(-1)] - truncation) ** 2).mean()
         return loss_fs
     else:
         return torch.tensor(0.0, device=pred_sdfs.device)
@@ -75,10 +75,17 @@ def sdf_surface_loss(pred_sdfs, sampled_depths, gt_depths, truncation=0.1,scale=
     :return: 近表面 SDF 损失
     """
     mask = torch.abs(gt_depths - sampled_depths) <= truncation/scale
+    # print(f"[Shape] mask: {mask.shape}")
+    # print(f"[Shape] gt_depths: {gt_depths.shape}")
 
     if mask.any():
+        
         gt_sdf = gt_depths[mask] - sampled_depths[mask]
-        loss_surface = ((pred_sdfs[mask] - gt_sdf) ** 2).mean()
+        # print(f"[Shape] gt_sdf: {gt_sdf.shape}")
+        # print(f"[Shape] pred_sdfs: {pred_sdfs.shape}")
+
+        loss_surface = ((pred_sdfs[mask.squeeze(-1)] - gt_sdf) ** 2).mean()
+
         return loss_surface
     else:
         return torch.tensor(0.0, device=pred_sdfs.device)
@@ -88,16 +95,22 @@ def total_loss(pred_rgb, gt_rgb, pred_d, gt_depth, pred_sdfs):
     """
     总损失计算，包含颜色损失、深度损失和 SDF 损失
     """
+    # print(f"[Shape] pred_rgb: {pred_rgb.shape}")
+    # print(f"[Shape] gt_rgb: {gt_rgb.shape}")
+    # print(f"[Shape] pred_d: {pred_d.shape}")
+    # print(f"[Shape] gt_depth: {gt_depth.shape}")
+    # print(f"[Shape] pred_sdfs: {pred_sdfs.shape}")
+
     loss_color = color_loss(pred_rgb, gt_rgb)  # 颜色损失
     loss_depth = depth_loss(gt_depth, pred_d)  # 深度损失
     loss_surface = sdf_surface_loss(pred_sdfs, pred_d, gt_depth)
     loss_free = free_space_loss(pred_sdfs, gt_depth, pred_d)
 
-    total_loss_value = 0.1*loss_color + 0.01 * loss_depth + 1000*loss_surface + loss_free
+    total_loss_value = loss_color +  loss_depth + loss_surface + loss_free
 
     print(f"[Loss] color: {loss_color.item():.6f}, "
-          f"depth: {0.01 * loss_depth.item():.6f}, "
-          f"surface_sdf: {1000*loss_surface.item():.6f}, "
+          f"depth: {loss_depth.item():.6f}, "
+          f"surface_sdf: {loss_surface.item():.6f}, "
           f"free_sdf: {loss_free.item():.6f}, "
           f"total: {total_loss_value.item():.6f}")
 

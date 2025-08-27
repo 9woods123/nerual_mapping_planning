@@ -36,8 +36,8 @@ class Renderer:
         rendered_depth = weight_depth/ weights_sum
 
 
-        print(f"[Render] rendered_color shape: {rendered_color.shape}")
-        print(f"[Render] rendered_depth shape: {rendered_depth.shape}")
+        # print(f"[Render] rendered_color shape: {rendered_color.shape}")
+        # print(f"[Render] rendered_depth shape: {rendered_depth.shape}")
 
         return rendered_color, rendered_depth
 

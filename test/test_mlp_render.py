@@ -93,11 +93,6 @@ depth_map=load_depth_image("sensor_data/depth.png")
 # 归一化 color
 color_map, c_min_val, c_max_val = normalize_numpy(color_map, 0, 255)
 
-print("=== 归一化后的 color_map 前20个值 ===")
-print(color_map[:20])
-print(f"color_map min={c_min_val}, max={c_max_val}")
-
-
 
 # 创建 RayCasting 和 Renderer 实例
 ray_casting = RayCasting(intrinsic_matrix)
@@ -108,21 +103,7 @@ renderer = Renderer()
 rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, pose, 480, 640)
 
 
-# 步骤 4: 沿射线采样
-all_rays_points, all_rays_depths = ray_casting.sample_points_along_ray(
-ray_origin=np.array([0, 0, 0]),  # 射线起点
-rays_direction_list=rays_3d,
-depths_list=depths
-)
 
-# 假设 all_rays_points 是 list of np.array，每个 shape = (N_samples, 3)
-sampled_rays_points_tensor = torch.tensor(np.stack(all_rays_points, axis=0), dtype=torch.float32).to(device)
-# shape = (N_rays, N_samples, 3)
-
-sampled_rays_depths_tensor = torch.tensor(np.stack(all_rays_depths, axis=0), dtype=torch.float32).to(device)
-# shape = (N_rays, N_samples)
-
-sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
 # print("sampled_points_tensor shape:", sampled_rays_points_tensor.shape)
 # print("sampled_depths_tensor shape:", sampled_rays_depths_tensor.shape)
 
@@ -131,8 +112,27 @@ sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_
 rgb_values = np.array(rgb_values, dtype=np.float32)  # list -> ndarray
 rgb_values = torch.from_numpy(rgb_values).to(device)  # ndarray -> Tensor
 
-num_epochs = 10  # 设置训练的轮数
+num_epochs = 100  # 设置训练的轮数
 for epoch in range(num_epochs):
+
+    # 步骤 4: 沿射线采样
+    all_rays_points, all_rays_depths, all_rays_endpoint_depths= ray_casting.sample_points_along_ray(
+    ray_origin=np.array([0, 0, 0]),  # 射线起点
+    rays_direction_list=rays_3d,
+    depths_list=depths
+    )
+
+    # 假设 all_rays_points 是 list of np.array，每个 shape = (N_samples, 3)
+    sampled_rays_points_tensor = torch.tensor(np.stack(all_rays_points, axis=0), dtype=torch.float32).to(device)
+    # shape = (N_rays, N_samples, 3)
+
+    sampled_rays_depths_tensor = torch.tensor(np.stack(all_rays_depths, axis=0), dtype=torch.float32).to(device)
+    sampled_rays_endpoint_depths_tensor = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
+
+    # shape = (N_rays, N_samples)
+
+    sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
+    sampled_rays_endpoint_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_endpoint_depths_tensor, 0, 10.0)
 
     pred_geo_features, pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(sampled_rays_points_tensor)
 
@@ -144,11 +144,8 @@ for epoch in range(num_epochs):
         pred_rays_rgbs_tensor
     )
 
-        # 打印前 10 个值对比
-    # print("sampled_depths_tensor[:10]:", sampled_rays_depths_tensor[:10].cpu().numpy())
-    # print("rendered_depth[:10]:", rendered_depth[:10].cpu().detach().numpy())
-    # 计算颜色损失
-    loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_rays_depths_tensor,pred_rays_sdfs_tensors)
+
+    loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_rays_endpoint_depths_tensor.unsqueeze(-1), pred_rays_sdfs_tensors)
 
     # 打印损失
     print(f'Epoch {epoch}/{num_epochs}, Loss: {loss.item()}')
@@ -160,6 +157,4 @@ for epoch in range(num_epochs):
 
 
 
-# 打印渲染结果
-print("Rendered Color:", rendered_color)
-print("Rendered Depth:", rendered_depth)
+
