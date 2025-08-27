@@ -66,9 +66,8 @@ def visualize_point_cloud(points_tensor, colors_tensor=None):
 
         o3d.visualization.draw_geometries([pcd])
 
-def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.05):
+def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.1):
     """
-    显示点云，点颜色为红色，sdf小于truncation的点不显示
     :param points_tensor: torch.Tensor, (N_rays, N_samples, 3) 或 (N_points, 3)
     :param sdf_tensors: torch.Tensor 或 np.array, 与 points_tensor 对应
     :param truncation: float, sdf 截断阈值
@@ -89,6 +88,12 @@ def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.05):
 
             mask = sdf <= truncation
             points = points[mask]
+            sdf = sdf[mask]
+
+            # 打印前几个 point 和 sdf
+            print("前几个点和对应的 SDF 值:")
+            for i in range(min(20, len(points))):
+                print(f"Point {i}: {points[i]}, SDF: {sdf[i]}")
 
         # 全部红色
         colors = np.tile(np.array([[1.0, 0.0, 0.0]]), (points.shape[0], 1))
@@ -154,6 +159,7 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
 
     # 筛选表面点
     mask = (sdf_values > 0) & (sdf_values < truncation)
+
     print(f"[Shape] mask: {mask.shape}")  # 应该是 (N,)
 
     # 保证 mask 是一维的

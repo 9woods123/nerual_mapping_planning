@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RayCasting:
-    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=32, M_f=10, d_s=0.1):
+    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=32, M_f=5, d_s=0.05):
         """
         初始化射线投影类
         

@@ -76,10 +76,10 @@ def load_depth_image(image_path, factor=5000.0):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=512, num_layers=8)
+neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=256, num_layers=4)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
-optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.001)
+optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.01)
 
 
 # 步骤 2: 初始化 RayCasting 和 Renderer 类
@@ -87,19 +87,19 @@ intrinsic_matrix = np.array([[525.0, 0, 319.5],
                              [0, 525.0, 239.5],
                              [0, 0, 1]])
 
+truncation=0.1  # 10cm
+
 pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
 
 color_map=load_color_image("sensor_data/color.png")
 depth_map=load_depth_image("sensor_data/depth.png")
-
-# 归一化 color
 color_map, c_min_val, c_max_val = normalize_numpy(color_map, 0, 255)
 
 
 # 创建 RayCasting 和 Renderer 实例
 ray_casting = RayCasting(intrinsic_matrix)
-renderer = Renderer(model=neural_rendering_model)
+renderer = Renderer(model=neural_rendering_model,tr=truncation)
 
 
 
@@ -116,11 +116,7 @@ for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
     
     rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, pose, 480, 640)
-
-
-
-    rgb_values = np.array(rgb_values, dtype=np.float32)  # list -> ndarray
-    rgb_values = torch.from_numpy(rgb_values).to(device)  # ndarray -> Tensor
+    rgb_values = torch.from_numpy(np.array(rgb_values, dtype=np.float32)).to(device)  # ndarray -> Tensor
     
     # 步骤 4: 沿射线采样
 
@@ -130,15 +126,13 @@ for epoch in range(num_epochs):
     depths_list=depths
     )
 
+        
     # 假设 all_rays_points 是 list of np.array，每个 shape = (N_samples, 3)
     sampled_rays_points_tensor = torch.tensor(np.stack(all_rays_points, axis=0), dtype=torch.float32).to(device)    # shape = (N_rays, N_samples, 3)
     sampled_rays_depths_tensor = torch.tensor(np.stack(all_rays_depths, axis=0), dtype=torch.float32).to(device)
     sampled_rays_surface_depths_tensor = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
 
-    print("all_rays_depths 前50个元素:", sampled_rays_depths_tensor.flatten()[:50])
-    print("all_rays_endpoint_depths 前50个元素:", sampled_rays_surface_depths_tensor.flatten()[:50])
 
-    print("============")
 
     sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
     sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
@@ -155,13 +149,7 @@ for epoch in range(num_epochs):
     )
 
 
-
-    print("rendered_color 前50个元素:", rendered_color.flatten()[:50])
-    print("rgb_values 前50个元素:", rgb_values.flatten()[:50])
-    print("rendered_depth 前50个元素:", rendered_depth.flatten()[:50])
-    print("sampled_rays_depths_tensor 前50个元素:", sampled_rays_depths_tensor.flatten()[:50])
-    print("sampled_rays_surface_depths_tensor 前50个元素:", sampled_rays_surface_depths_tensor.flatten()[:50])
-    print("pred_rays_sdfs_tensors 前50个元素:", pred_rays_sdfs_tensors.flatten()[:50])
+# def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, pred_sdfs):
 
     loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_rays_depths_tensor, sampled_rays_surface_depths_tensor.unsqueeze(-1), pred_rays_sdfs_tensors)
 
@@ -177,18 +165,18 @@ for epoch in range(num_epochs):
 
 # visualize_point_cloud(all_rays_endpoint_3d,rendered_color)
 
-visualize_point_cloud_red(all_rays_points,pred_rays_sdfs_tensors)
+# visualize_point_cloud_red(sampled_rays_points_tensor,pred_rays_sdfs_tensors)
 
-# bounding_box = np.array([[-3,-3,-3],[3,3,3]])  # 自定义全局范围
-# voxel_size = 0.1
+bounding_box = np.array([[-3,-3,-3],[5,5,5]])  # 自定义全局范围
+voxel_size = 0.1
 
 
-# surface_points = visualize_global_surface(
-#     query_fn=renderer.query_sdf_color_function, 
-#     bounding_box=bounding_box, 
-#     voxel_size=voxel_size, 
-#     truncation=0.1,
-#     device='cuda',
-#     save_path='./global_surface.ply'
-# )
+surface_points = visualize_global_surface(
+    query_fn=renderer.query_sdf_color_function, 
+    bounding_box=bounding_box, 
+    voxel_size=voxel_size, 
+    truncation=0.1,
+    device='cuda',
+    save_path='./global_surface.ply'
+)
 

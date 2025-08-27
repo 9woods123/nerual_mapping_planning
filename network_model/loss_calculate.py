@@ -1,31 +1,9 @@
 import torch
 import torch.nn.functional as F
 
-# 基础损失函数：均方误差和L1损失
-def mse_loss(pred, target):
-    return F.mse_loss(pred, target)
 
-def l1_loss(pred, target):
-    return torch.abs(pred - target).mean()
 
-# SDF 损失函数
-def sdf_loss(pred_sdf, gt_sdf):
-    """
-    计算 SDF 损失：用于评估预测的 SDF 和真实 SDF 之间的差异
-    """
-    loss = torch.mean((pred_sdf - gt_sdf)**2)
-    return loss
 
-# 自由空间损失
-def free_space_loss(pred_sdf, gt_depth, tr):
-    """
-    计算自由空间损失：用于评估远离表面（自由空间）点的 SDF 预测值
-    """
-    # 获取远离表面区域的点
-    mask_free_space = torch.abs(gt_depth - tr) > tr  # 自由空间区域
-    
-    loss_fs = torch.mean((pred_sdf[mask_free_space] - tr)**2)
-    return loss_fs
 
 # 颜色损失函数
 def color_loss(pred_rgb, gt_rgb):
@@ -40,6 +18,7 @@ def depth_loss(pred_depth, gt_depth):
     """
     计算颜色损失：用于评估预测的 RGB 和真实 RGB 之间的差异
     """
+
     return torch.mean((pred_depth - gt_depth)**2)
 
 def free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth, truncation=0.1, scale=10.0):
@@ -55,12 +34,16 @@ def free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth, truncation=
     :return: 自由空间损失
     """
     surface_depths_broadcast = surface_depths_tensor.expand_as(observe_depth)
-    mask = torch.abs(surface_depths_broadcast - observe_depth) > truncation/scale
+    mask = surface_depths_broadcast - observe_depth > truncation/scale
 
 
     if mask.any():
         
         loss_fs = ((pred_sdfs[mask] - truncation) ** 2).mean()
+
+        print(f"[FreeSpace] #points={mask.sum().item()}, "
+              f"pred_sdfs mean={pred_sdfs[mask].mean().item():.4f}, "
+              f"target={truncation}")
 
         return loss_fs
     else:
@@ -74,14 +57,30 @@ def sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor, truncation
     """
     # 广播 surface_depths_tensor 到 observe_depth 的 shape
     surface_depths_broadcast = surface_depths_tensor.expand_as(observe_depth)
-    mask = torch.abs(surface_depths_broadcast - observe_depth) <= truncation/scale
+    diff = torch.abs(surface_depths_broadcast - observe_depth)
+    mask = diff <= truncation / scale
 
- 
+    num_total = mask.numel()
+    num_mask = mask.sum().item()
+    ratio = num_mask / num_total if num_total > 0 else 0.0
+    print(f"[Surface] mask points={num_mask}/{num_total} ({ratio*100:.2f}%) "
+    f"min diff={diff.min().item():.6f}, max diff={diff.max().item():.6f}")
+
     if mask.any():
-        gt_sdf =  surface_depths_broadcast[mask] - observe_depth[mask]
+        gt_sdf =  scale*(surface_depths_broadcast[mask] - observe_depth[mask])   ## TODO : scale 
         loss_surface = ((pred_sdfs[mask] - gt_sdf) ** 2).mean()
+        print(f"[Surface] #points={mask.sum().item()}, "
+        f"pred_sdfs mean={pred_sdfs[mask].mean().item():.4f}, "
+        f"gt_sdf mean={gt_sdf.mean().item():.4f}")
+        num_pos = (gt_sdf > 0).sum().item()
+        num_neg = (gt_sdf < 0).sum().item()
+        print(f"[Surface] gt_sdf: mean={gt_sdf.mean().item():.4f}, "
+                f"std={gt_sdf.std().item():.4f}, "
+                f"pos={num_pos}, neg={num_neg}, zero={(gt_sdf==0).sum().item()}")
+    
         return loss_surface
     else:
+        print("[Surface] no points")
         return torch.tensor(0.0, device=pred_sdfs.device)
 
 
@@ -101,7 +100,7 @@ def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, p
     loss_surface = sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
     loss_free = free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
 
-    total_loss_value = 0.01*loss_color + 100*loss_depth + 5000*loss_surface + 5000*loss_free
+    total_loss_value = loss_color + 50*loss_depth + 50*loss_surface + 1000*loss_free
 
     print(f"[Loss] color: {loss_color.item():.6f}, "
           f"depth: {loss_depth.item():.6f}, "
