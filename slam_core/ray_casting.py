@@ -76,18 +76,10 @@ class RayCasting:
 
 
 
-    def sample_points_along_ray(self, ray_origin, rays_direction_list, depths_list , M_c=None, M_f=None, d_s=None):
+    def sample_points_along_ray(self, ray_origin, rays_direction_list, depths_list, M_c=None, M_f=None, d_s=None):
         """
         深度引导采样：在射线的远近边界之间均匀采样 M_c 个点，
         对于有有效深度的射线，额外在 [d - d_s, d + d_s] 范围内均匀采样 M_f 个点
-        
-        :param ray_origin: 射线起点
-        :param ray_direction: 射线方向
-        :param depths: 深度值
-        :param M_c: 每条射线均匀采样的点数
-        :param M_f: 每条射线的近表面采样点数
-        :param d_s: 深度偏移量
-        :return: 采样的 3D 点、颜色和深度值
         """
 
         if len(rays_direction_list) != len(depths_list):
@@ -99,37 +91,44 @@ class RayCasting:
             M_f = self.M_f
         if d_s is None:
             d_s = self.d_s
-        
-        sampled_3d_points = []
-        sampled_depths = []
-        
-        for ray_id in range(len(rays_direction_list)):
-            
-            ray_direction=rays_direction_list[ray_id]
-            ray_direction = ray_direction / np.linalg.norm(ray_direction)  ## 二次确认归一化
 
-            depth= depths_list[ray_id]
+        all_rays_points = []
+        all_rays_depths = []
+
+        for ray_id in range(len(rays_direction_list)):
+            ray_direction = rays_direction_list[ray_id]
+            ray_direction = ray_direction / np.linalg.norm(ray_direction)
+
+            depth = depths_list[ray_id]
+
+            ray_points = []
+            ray_depths = []
+
+            if depth < 0:
+                continue
 
             # 采样远近边界上的 M_c 个点
             for i in range(M_c):
                 t = (i + 1) / M_c
-
                 sampled_depth = t * depth
                 sample_point = ray_origin + sampled_depth * ray_direction
 
-                sampled_3d_points.append(sample_point)
-                sampled_depths.append(sampled_depth)
+                ray_points.append(sample_point)
+                ray_depths.append(sampled_depth)
 
             # 对于有有效深度的射线，采样 M_f 个近表面点
             for j in range(M_f):
-                # 近表面点的深度采样范围是 [d - d_s, d + d_s]
                 t = (j + 1) / M_f
+                sampled_depth = depth - d_s + t * 2 * d_s
+                sample_point = ray_origin + sampled_depth * ray_direction
 
-                sampled_depth =  (depth - d_s + t * 2 * d_s) 
-                sample_point = ray_origin + sampled_depth * ray_direction  # 使用深度进行偏移
-                
-                sampled_3d_points.append(sample_point)
-                sampled_depths.append(sampled_depth)
+                ray_points.append(sample_point)
+                ray_depths.append(sampled_depth)
 
+            all_rays_points.append(np.array(ray_points))   
+            all_rays_depths.append(np.array(ray_depths))  
 
-        return sampled_3d_points, sampled_depths
+        print(f"all_rays_points: {len(all_rays_points)} rays, each with {all_rays_points[0].shape if len(all_rays_points)>0 else 0} points")
+        print(f"all_rays_depths: {len(all_rays_depths)} rays, each with {all_rays_depths[0].shape if len(all_rays_depths)>0 else 0} depths")
+
+        return all_rays_points, all_rays_depths
