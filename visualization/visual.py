@@ -66,7 +66,7 @@ def visualize_point_cloud(points_tensor, colors_tensor=None):
 
         o3d.visualization.draw_geometries([pcd])
 
-def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.1):
+def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.05):
     """
     显示点云，点颜色为红色，sdf小于truncation的点不显示
     :param points_tensor: torch.Tensor, (N_rays, N_samples, 3) 或 (N_points, 3)

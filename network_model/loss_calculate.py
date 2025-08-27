@@ -60,7 +60,7 @@ def free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth, truncation=
 
     if mask.any():
         
-        loss_fs = ((pred_sdfs[mask.squeeze(-1)] - truncation) ** 2).mean()
+        loss_fs = ((pred_sdfs[mask] - truncation) ** 2).mean()
 
         return loss_fs
     else:
@@ -75,10 +75,10 @@ def sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor, truncation
     # 广播 surface_depths_tensor 到 observe_depth 的 shape
     surface_depths_broadcast = surface_depths_tensor.expand_as(observe_depth)
     mask = torch.abs(surface_depths_broadcast - observe_depth) <= truncation/scale
-    
+
  
     if mask.any():
-        gt_sdf = observe_depth[mask] - surface_depths_broadcast[mask]  # 注意顺序，SDF = sampled_depth - surface_depth
+        gt_sdf =  surface_depths_broadcast[mask] - observe_depth[mask]
         loss_surface = ((pred_sdfs[mask] - gt_sdf) ** 2).mean()
         return loss_surface
     else:
@@ -101,7 +101,7 @@ def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, p
     loss_surface = sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
     loss_free = free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
 
-    total_loss_value = loss_color +  loss_depth + 10*loss_surface +10*loss_free
+    total_loss_value = 0.01*loss_color + 100*loss_depth + 5000*loss_surface + 5000*loss_free
 
     print(f"[Loss] color: {loss_color.item():.6f}, "
           f"depth: {loss_depth.item():.6f}, "

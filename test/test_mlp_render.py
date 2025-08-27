@@ -76,7 +76,7 @@ def load_depth_image(image_path, factor=5000.0):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=512, num_layers=4)
+neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=512, num_layers=8)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
 optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.001)
@@ -104,13 +104,14 @@ renderer = Renderer(model=neural_rendering_model)
 
 
 
-num_epochs = 1000  # 设置训练的轮数
+num_epochs = 100  # 设置训练的轮数
 
 
 pred_rays_rgbs_tensor=None
 sampled_rays_points_tensor=None
 all_rays_endpoint_3d=None
 all_rays_endpoint_3d_first_frame=None
+
 for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
     
@@ -134,6 +135,10 @@ for epoch in range(num_epochs):
     sampled_rays_depths_tensor = torch.tensor(np.stack(all_rays_depths, axis=0), dtype=torch.float32).to(device)
     sampled_rays_surface_depths_tensor = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
 
+    print("all_rays_depths 前50个元素:", sampled_rays_depths_tensor.flatten()[:50])
+    print("all_rays_endpoint_depths 前50个元素:", sampled_rays_surface_depths_tensor.flatten()[:50])
+
+    print("============")
 
     sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
     sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
@@ -149,6 +154,14 @@ for epoch in range(num_epochs):
         pred_rays_rgbs_tensor
     )
 
+
+
+    print("rendered_color 前50个元素:", rendered_color.flatten()[:50])
+    print("rgb_values 前50个元素:", rgb_values.flatten()[:50])
+    print("rendered_depth 前50个元素:", rendered_depth.flatten()[:50])
+    print("sampled_rays_depths_tensor 前50个元素:", sampled_rays_depths_tensor.flatten()[:50])
+    print("sampled_rays_surface_depths_tensor 前50个元素:", sampled_rays_surface_depths_tensor.flatten()[:50])
+    print("pred_rays_sdfs_tensors 前50个元素:", pred_rays_sdfs_tensors.flatten()[:50])
 
     loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_rays_depths_tensor, sampled_rays_surface_depths_tensor.unsqueeze(-1), pred_rays_sdfs_tensors)
 
