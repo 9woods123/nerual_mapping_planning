@@ -42,7 +42,7 @@ def depth_loss(pred_depth, gt_depth):
     """
     return torch.mean((pred_depth - gt_depth)**2)
 
-def free_space_loss(pred_sdfs, gt_depths, sampled_depths, truncation=0.1, scale=10.0):
+def free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth, truncation=0.1, scale=10.0):
     """
     自由空间损失 (Free-space Loss)
     对远离表面的点 |D - d| > tr，强制 SDF 接近截断距离 tr
@@ -54,44 +54,39 @@ def free_space_loss(pred_sdfs, gt_depths, sampled_depths, truncation=0.1, scale=
     :param scale: 缩放因子（可用于放大判断阈值）
     :return: 自由空间损失
     """
-    mask = torch.abs(gt_depths - sampled_depths) > truncation / scale
+    surface_depths_broadcast = surface_depths_tensor.expand_as(observe_depth)
+    mask = torch.abs(surface_depths_broadcast - observe_depth) > truncation/scale
+
 
     if mask.any():
+        
         loss_fs = ((pred_sdfs[mask.squeeze(-1)] - truncation) ** 2).mean()
+
         return loss_fs
     else:
         return torch.tensor(0.0, device=pred_sdfs.device)
 
 
-def sdf_surface_loss(pred_sdfs, sampled_depths, gt_depths, truncation=0.1,scale=10.0):
+def sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor, truncation=0.1, scale=10.0):
     """
     近表面 SDF 监督 (Near-surface Supervision)
     对 |D - d| <= tr 的点，监督 SDF 接近真实值 D - d
-
-    :param pred_sdfs: (N,) 网络预测 SDF
-    :param sampled_depths: (N,) 射线采样点深度
-    :param gt_depths: (N,) 深度图真实值
-    :param truncation: 截断距离 tr
-    :return: 近表面 SDF 损失
     """
-    mask = torch.abs(gt_depths - sampled_depths) <= truncation/scale
-    # print(f"[Shape] mask: {mask.shape}")
-    # print(f"[Shape] gt_depths: {gt_depths.shape}")
-
+    # 广播 surface_depths_tensor 到 observe_depth 的 shape
+    surface_depths_broadcast = surface_depths_tensor.expand_as(observe_depth)
+    mask = torch.abs(surface_depths_broadcast - observe_depth) <= truncation/scale
+    
+ 
     if mask.any():
-        
-        gt_sdf = gt_depths[mask] - sampled_depths[mask]
-        # print(f"[Shape] gt_sdf: {gt_sdf.shape}")
-        # print(f"[Shape] pred_sdfs: {pred_sdfs.shape}")
-
-        loss_surface = ((pred_sdfs[mask.squeeze(-1)] - gt_sdf) ** 2).mean()
-
+        gt_sdf = observe_depth[mask] - surface_depths_broadcast[mask]  # 注意顺序，SDF = sampled_depth - surface_depth
+        loss_surface = ((pred_sdfs[mask] - gt_sdf) ** 2).mean()
         return loss_surface
     else:
         return torch.tensor(0.0, device=pred_sdfs.device)
 
 
-def total_loss(pred_rgb, gt_rgb, pred_d, gt_depth, pred_sdfs):
+
+def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, pred_sdfs):
     """
     总损失计算，包含颜色损失、深度损失和 SDF 损失
     """
@@ -102,9 +97,9 @@ def total_loss(pred_rgb, gt_rgb, pred_d, gt_depth, pred_sdfs):
     # print(f"[Shape] pred_sdfs: {pred_sdfs.shape}")
 
     loss_color = color_loss(pred_rgb, gt_rgb)  # 颜色损失
-    loss_depth = depth_loss(gt_depth, pred_d)  # 深度损失
-    loss_surface = sdf_surface_loss(pred_sdfs, pred_d, gt_depth)
-    loss_free = free_space_loss(pred_sdfs, gt_depth, pred_d)
+    loss_depth = depth_loss(surface_depths_tensor, pred_d)  # 深度损失
+    loss_surface = sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
+    loss_free = free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
 
     total_loss_value = loss_color +  loss_depth + loss_surface + loss_free
 
