@@ -66,7 +66,40 @@ def visualize_point_cloud(points_tensor, colors_tensor=None):
 
         o3d.visualization.draw_geometries([pcd])
 
+def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.1):
+    """
+    显示点云，点颜色为红色，sdf小于truncation的点不显示
+    :param points_tensor: torch.Tensor, (N_rays, N_samples, 3) 或 (N_points, 3)
+    :param sdf_tensors: torch.Tensor 或 np.array, 与 points_tensor 对应
+    :param truncation: float, sdf 截断阈值
+    """
+    with torch.no_grad():
+        # 转 numpy
+        if isinstance(points_tensor, torch.Tensor):
+            points = points_tensor.reshape(-1, 3).cpu().numpy()
+        else:
+            points = np.array(points_tensor).reshape(-1, 3)
 
+        # 处理 sdf 并筛选
+        if sdf_tensors is not None:
+            if isinstance(sdf_tensors, torch.Tensor):
+                sdf = sdf_tensors.reshape(-1).cpu().numpy()
+            else:
+                sdf = np.array(sdf_tensors).reshape(-1)
+
+            mask = sdf <= truncation
+            points = points[mask]
+
+        # 全部红色
+        colors = np.tile(np.array([[1.0, 0.0, 0.0]]), (points.shape[0], 1))
+
+        # 构建 Open3D 点云
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points)
+        pcd.colors = o3d.utility.Vector3dVector(colors)
+
+        # 可视化
+        o3d.visualization.draw_geometries([pcd])
 
 
 

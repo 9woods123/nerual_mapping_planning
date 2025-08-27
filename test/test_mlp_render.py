@@ -104,22 +104,25 @@ renderer = Renderer(model=neural_rendering_model)
 
 
 
-num_epochs = 100  # 设置训练的轮数
+num_epochs = 1000  # 设置训练的轮数
 
 
 pred_rays_rgbs_tensor=None
 sampled_rays_points_tensor=None
 all_rays_endpoint_3d=None
-
+all_rays_endpoint_3d_first_frame=None
 for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
+    
     rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, pose, 480, 640)
 
 
 
     rgb_values = np.array(rgb_values, dtype=np.float32)  # list -> ndarray
     rgb_values = torch.from_numpy(rgb_values).to(device)  # ndarray -> Tensor
+    
     # 步骤 4: 沿射线采样
+
     all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths = ray_casting.sample_points_along_ray(
     ray_origin=np.array([0, 0, 0]),  # 射线起点
     rays_direction_list=rays_3d,
@@ -161,17 +164,18 @@ for epoch in range(num_epochs):
 
 # visualize_point_cloud(all_rays_endpoint_3d,rendered_color)
 
+visualize_point_cloud_red(all_rays_points,pred_rays_sdfs_tensors)
 
-bounding_box = np.array([[-3,-3,-3],[3,3,3]])  # 自定义全局范围
-voxel_size = 0.1
+# bounding_box = np.array([[-3,-3,-3],[3,3,3]])  # 自定义全局范围
+# voxel_size = 0.1
 
 
-surface_points = visualize_global_surface(
-    query_fn=renderer.query_sdf_color_function, 
-    bounding_box=bounding_box, 
-    voxel_size=voxel_size, 
-    truncation=0.1,
-    device='cuda',
-    save_path='./global_surface.ply'
-)
+# surface_points = visualize_global_surface(
+#     query_fn=renderer.query_sdf_color_function, 
+#     bounding_box=bounding_box, 
+#     voxel_size=voxel_size, 
+#     truncation=0.1,
+#     device='cuda',
+#     save_path='./global_surface.ply'
+# )
 
