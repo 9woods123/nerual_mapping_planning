@@ -101,7 +101,7 @@ def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, p
     loss_surface = sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
     loss_free = free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
 
-    total_loss_value = loss_color +  loss_depth + loss_surface + loss_free
+    total_loss_value = loss_color +  1.5*loss_depth + loss_surface + loss_free
 
     print(f"[Loss] color: {loss_color.item():.6f}, "
           f"depth: {loss_depth.item():.6f}, "

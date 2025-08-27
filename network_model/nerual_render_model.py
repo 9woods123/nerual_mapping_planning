@@ -26,7 +26,7 @@ class NeuralRenderingModel(nn.Module):
         self.oneblob_encoding = OneBlobEncoding(input_dim, encoding_dim,output_dim=encoding_dim)
         
         # Hash Grid 编码器
-        self.hash_grid_encoder = HashGridMLPEncoder(input_dim, hidden_dim=256, output_dim=256)
+        self.hash_grid_encoder = HashGridMLPEncoder(input_dim, hidden_dim=128, output_dim=128)
 
         # 几何解码器
         self.geometry_decoder = GeometryDecoder(encoding_dim + self.hash_grid_encoder.get_encoder_output_dim(), hidden_dim=64, h_dim=64, s_dim=1)  # SDF 或其他几何信息
@@ -47,6 +47,7 @@ class NeuralRenderingModel(nn.Module):
 
         oneblob_features = self.oneblob_encoding(x)        # One-Blob Encoding
         hash_grid_features = self.hash_grid_encoder(x)        # Hash Grid Encoding
+
         
         geometry_input = torch.cat([oneblob_features, hash_grid_features], dim=-1)  # 将 One-Blob 和 Hash Grid 特征拼接
         geo_features, sdf = self.geometry_decoder(geometry_input)  # 生成几何信息（如 SDF）
@@ -88,3 +89,5 @@ class SimpleMLPModel(nn.Module):
         sdf = self.sdf_head(features)              # (B, 1)
         rgb = torch.sigmoid(self.rgb_head(features))  # (B, 3)，Sigmoid 确保范围 [0,1]
         return None, sdf, rgb
+    
+

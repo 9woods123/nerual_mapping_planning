@@ -28,6 +28,7 @@ class HashGridMLPEncoder(nn.Module):
             n_features_per_level=n_features_per_level
         )
 
+
         # MLP 网络结构
         layers = [nn.Linear(self.hash_grid_encoder.output_dim, hidden_dim)]
 
@@ -47,11 +48,9 @@ class HashGridMLPEncoder(nn.Module):
         :return: 输出数据，形状为 (batch_size, output_dim)
         """
         # 通过 MultiResHashGrid 编码器生成特征
+
         hash_grid_features = self.hash_grid_encoder(x)
-        
-        # 扁平化输入以适应 MLP 输入格式
-        hash_grid_features = hash_grid_features.view(hash_grid_features.size(0), -1)
-        
+
         # 通过 MLP 网络进行处理
         return self.network(hash_grid_features)
     

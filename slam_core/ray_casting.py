@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RayCasting:
-    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=20, M_f=10, d_s=0.1):
+    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=20, M_f=20, d_s=0.1):
         """
         初始化射线投影类
         
@@ -94,8 +94,10 @@ class RayCasting:
 
         all_rays_points = []
         all_rays_depths = []
+        
+        all_rays_endpoint_3d=[]
         all_rays_endpoint_depths=[]
-
+        
         for ray_id in range(len(rays_direction_list)):
             ray_direction = rays_direction_list[ray_id]
             ray_direction = ray_direction / np.linalg.norm(ray_direction)
@@ -128,11 +130,13 @@ class RayCasting:
                 ray_points.append(sample_point)
                 ray_depths.append(sampled_depth)
 
+            all_rays_endpoint_3d.append(ray_origin + depth * ray_direction)
             all_rays_endpoint_depths.append(depth)
             all_rays_points.append(np.array(ray_points))   
             all_rays_depths.append(np.array(ray_depths))  
 
+
         # print(f"all_rays_points: {len(all_rays_points)} rays, each with {all_rays_points[0].shape if len(all_rays_points)>0 else 0} points")
         # print(f"all_rays_depths: {len(all_rays_depths)} rays, each with {all_rays_depths[0].shape if len(all_rays_depths)>0 else 0} depths")
 
-        return all_rays_points, all_rays_depths, all_rays_endpoint_depths
+        return all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths

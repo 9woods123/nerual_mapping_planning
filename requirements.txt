@@ -11,4 +11,5 @@ tqdm
 rospkg
 
 opencv-python
-
+trimesh
+open3d

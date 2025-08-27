@@ -2,8 +2,11 @@ import torch
 import numpy as np
 
 class Renderer:
-    def __init__(self, tr=0.01):
+    def __init__(self, model, device="cuda", tr=0.1):
         self.tr = tr
+        self.model = model
+        self.device = device
+
 
     def render(self, depth_values,sdf_values,color_values):
         """
@@ -25,7 +28,6 @@ class Renderer:
         # [Render] weights shape: torch.Size([231, 20, 1])
         # [Render] weights_sum shape: torch.Size([231, 1, 1])
         # [Render] weight_color shape: torch.Size([231, 3])
-
 
 
         weight_color=torch.sum(weights * color_values, dim=1)
@@ -50,3 +52,23 @@ class Renderer:
 
         return weights
 
+
+    @torch.no_grad()
+    def query_sdf_color_function(self, points, device='cuda'):
+        """
+        输入: 
+            points: (N, 3) torch.Tensor 或 np.ndarray
+            model: 你的神经隐式模型, 需要有 sdf/color 的输出
+        输出:
+            sdf_values: (N, 1)
+            color_values: (N, 3)
+        """
+        if not torch.is_tensor(points):
+            points = torch.from_numpy(points).float().to(device)
+        else:
+            points = points.float().to(device)
+
+        # 假设 model 返回 (sdf, color)
+        _,sdf_values, color_values = self.model(points)
+
+        return sdf_values, color_values

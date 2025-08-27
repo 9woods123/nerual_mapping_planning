@@ -15,3 +15,8 @@ build/
 data/
 
 *.ply
+
+*__pycache__/
+
+*tash list
+
