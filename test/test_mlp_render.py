@@ -76,10 +76,10 @@ def load_depth_image(image_path, factor=5000.0):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=256, num_layers=4)
+neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=512, num_layers=8)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
-optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.01)
+optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.001)
 
 
 # 步骤 2: 初始化 RayCasting 和 Renderer 类
@@ -104,20 +104,25 @@ renderer = Renderer(model=neural_rendering_model,tr=truncation)
 
 
 
-num_epochs = 100  # 设置训练的轮数
+num_epochs = 500  # 设置训练的轮数
 
 
 pred_rays_rgbs_tensor=None
 sampled_rays_points_tensor=None
 all_rays_endpoint_3d=None
+
+
 all_rays_endpoint_3d_first_frame=None
+
+
+
 
 for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
     
     rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, pose, 480, 640)
-    rgb_values = torch.from_numpy(np.array(rgb_values, dtype=np.float32)).to(device)  # ndarray -> Tensor
-    
+    target_rgb = torch.from_numpy(np.array(rgb_values, dtype=np.float32)).to(device)  # ndarray -> Tensor
+
     # 步骤 4: 沿射线采样
 
     all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths = ray_casting.sample_points_along_ray(
@@ -126,32 +131,47 @@ for epoch in range(num_epochs):
     depths_list=depths
     )
 
-        
+    # all_rays_points: 1115 rays, each with (35, 3) points
+    # all_rays_depths: 1115 rays, each with (35,) depths
+    # all_rays_endpoint_3d: 1115 rays, each with (3,) points
+    # all_rays_endpoint_depths: 1115 rays, each with () depths
     # 假设 all_rays_points 是 list of np.array，每个 shape = (N_samples, 3)
+
     sampled_rays_points_tensor = torch.tensor(np.stack(all_rays_points, axis=0), dtype=torch.float32).to(device)    # shape = (N_rays, N_samples, 3)
     sampled_rays_depths_tensor = torch.tensor(np.stack(all_rays_depths, axis=0), dtype=torch.float32).to(device)
-    sampled_rays_surface_depths_tensor = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
 
 
+    # print("===========================epoch============================")
+    # print("----------all_rays_points----------:")
+    # print(all_rays_points)
+    # print("------------sampled_rays_points_tensor-----------:")
+    # print(sampled_rays_points_tensor)
+    # print("-----------------------------------------------------------:")
 
-    sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
-    sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
+    
+
+    target_depth = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
+    sampled_rays_points_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_points_tensor, 0, 10.0)
 
 
+    # sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
+    # sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
 
     pred_geo_features, pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(sampled_rays_points_tensor)
 
     # 使用 Renderer 类根据模型的输出进行最终渲染
+
     rendered_color, rendered_depth = renderer.render(
         sampled_rays_depths_tensor, 
         pred_rays_sdfs_tensors,
         pred_rays_rgbs_tensor
-    )
+        )
 
 
 # def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, pred_sdfs):
 
-    loss = total_loss(rendered_color, rgb_values, rendered_depth, sampled_rays_depths_tensor, sampled_rays_surface_depths_tensor.unsqueeze(-1), pred_rays_sdfs_tensors)
+
+    loss = total_loss(rendered_color, target_rgb, rendered_depth, sampled_rays_depths_tensor, target_depth.unsqueeze(-1), pred_rays_sdfs_tensors)
 
     # 打印损失
     print(f'Epoch {epoch}/{num_epochs}, Loss: {loss.item()}')
@@ -165,10 +185,10 @@ for epoch in range(num_epochs):
 
 # visualize_point_cloud(all_rays_endpoint_3d,rendered_color)
 
-# visualize_point_cloud_red(sampled_rays_points_tensor,pred_rays_sdfs_tensors)
+# visualize_point_cloud(points_tensor=sampled_rays_points_tensor,sdf_tensors=pred_rays_sdfs_tensors,color_tensors=pred_rays_rgbs_tensor)
 
-bounding_box = np.array([[-3,-3,-3],[5,5,5]])  # 自定义全局范围
-voxel_size = 0.1
+bounding_box = np.array([[-2,-2,-2],[2,2,2]])  # 自定义全局范围
+voxel_size = 0.05
 
 
 surface_points = visualize_global_surface(

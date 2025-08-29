@@ -13,3 +13,4 @@ rospkg
 opencv-python
 trimesh
 open3d
+PyMCubes

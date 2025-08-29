@@ -2,9 +2,8 @@ import torch
 import numpy as np
 
 
-
 class RayCasting:
-    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=32, M_f=5, d_s=0.05):
+    def __init__(self, intrinsic_matrix, sample_ratio=0.005, M_c=35, M_f=10, d_s=0.05):
         """
         初始化射线投影类
         
@@ -72,6 +71,7 @@ class RayCasting:
             rgb_values.append(rgb)
             depths.append(depth)
 
+
         return rays_3d, rgb_values, depths
 
 
@@ -130,13 +130,19 @@ class RayCasting:
                 ray_points.append(sample_point)
                 ray_depths.append(sampled_depth)
 
+
             all_rays_endpoint_3d.append(ray_origin + depth * ray_direction)
             all_rays_endpoint_depths.append(depth)
+
             all_rays_points.append(np.array(ray_points))   
             all_rays_depths.append(np.array(ray_depths))  
+            
 
-
+        # print("============================sample_points_along_ray==============================")
         # print(f"all_rays_points: {len(all_rays_points)} rays, each with {all_rays_points[0].shape if len(all_rays_points)>0 else 0} points")
         # print(f"all_rays_depths: {len(all_rays_depths)} rays, each with {all_rays_depths[0].shape if len(all_rays_depths)>0 else 0} depths")
+        # print(f"all_rays_endpoint_3d: {len(all_rays_endpoint_3d)} rays, each with {all_rays_endpoint_3d[0].shape if len(all_rays_endpoint_3d)>0 else 0} points")
+        # print(f"all_rays_endpoint_depths: {len(all_rays_endpoint_depths)} rays, each with {all_rays_endpoint_depths[0].shape if len(all_rays_endpoint_depths)>0 else 0} depths")
+        # print("---------------------------------------------------------------------------------")
 
         return all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths

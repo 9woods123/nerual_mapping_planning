@@ -60,23 +60,56 @@ class NeuralRenderingModel(nn.Module):
         return geo_features, sdf, rgb
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_dim, hidden_dim, num_layers=2):
+        super().__init__()
+
+        self.input_proj = nn.Linear(in_dim, hidden_dim) 
+        
+        layers = []
+        for i in range(num_layers):
+            layers.append(nn.Linear(hidden_dim, hidden_dim))
+            layers.append(nn.ReLU(inplace=True))
+
+        self.block = nn.Sequential(*layers)
+
+    def forward(self, x):
+        h = self.input_proj(x)
+        return h + self.block(h)
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, input_dim=3, num_freqs=6):
+        super().__init__()
+        self.num_freqs = num_freqs
+        self.input_dim = input_dim
+
+        freq_bands = 2.0 ** torch.arange(num_freqs).float() * torch.pi  # [1,2,4,8,...]
+        self.register_buffer('freq_bands', freq_bands)
+
+    def forward(self, x):
+        """
+        x: [B, input_dim]
+        returns: [B, input_dim * 2 * num_freqs]
+        """
+        out = [x]
+        for freq in self.freq_bands:
+            out.append(torch.sin(x * freq))
+            out.append(torch.cos(x * freq))
+            
+        return torch.cat(out, dim=-1)
+
 
 class SimpleMLPModel(nn.Module):
-    def __init__(self, input_dim=3, hidden_dim=128, num_layers=4):
-        """
-        简单的 MLP 网络，直接从输入坐标预测 SDF 和 RGB
-        """
-        super(SimpleMLPModel, self).__init__()
+    def __init__(self, input_dim=3, hidden_dim=128, num_layers=4, num_freqs=120):
+        super().__init__()
 
-        # shared encoder
-        layers = []
-        in_dim = input_dim
-        for i in range(num_layers):
-            layers.append(nn.Linear(in_dim, hidden_dim))
-            layers.append(nn.ReLU(inplace=True))
-            in_dim = hidden_dim
+        self.pe = PositionalEncoding(input_dim=input_dim, num_freqs=num_freqs)
+        pe_dim = input_dim * (2*num_freqs +1)  # 原始 + sin/cos
 
-        self.shared_layers = nn.Sequential(*layers)
+
+        self.res_block = ResidualBlock(pe_dim, hidden_dim, num_layers)
+        # self.res_block = ResidualBlock(input_dim, hidden_dim, num_layers)
 
         # SDF head
         self.sdf_head = nn.Sequential(
@@ -84,11 +117,6 @@ class SimpleMLPModel(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-
             nn.Linear(hidden_dim, 1)
         )
 
@@ -98,19 +126,15 @@ class SimpleMLPModel(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=True),
-            
             nn.Linear(hidden_dim, 3),
-            nn.Sigmoid()   # 把输出约束在 [0,1]
+            nn.Sigmoid()
         )
 
     def forward(self, x):
-        features = self.shared_layers(x)   # 公共特征
+        x_pe = self.pe(x)
 
-        sdf = self.sdf_head(features)      # SDF 分支
-        rgb = self.rgb_head(features)      # RGB 分支
-
+        features = self.res_block(x_pe)
+        sdf = self.sdf_head(features)
+        rgb = self.rgb_head(features)
         return features, sdf, rgb
+

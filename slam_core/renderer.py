@@ -46,8 +46,10 @@ class Renderer:
 
     def compute_weights(self, sdf_values):
         # 使用 SDF 计算权重
-        sigmoid1 = torch.sigmoid(sdf_values / self.tr)
-        sigmoid2 = torch.sigmoid(-sdf_values / self.tr)
+        # sigmoid1 = torch.sigmoid(sdf_values / self.tr)
+        # sigmoid2 = torch.sigmoid(-sdf_values / self.tr)
+        sigmoid1 = torch.sigmoid(sdf_values)
+        sigmoid2 = torch.sigmoid(-sdf_values)
         weights = sigmoid1 * sigmoid2
 
         return weights

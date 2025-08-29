@@ -29,11 +29,8 @@ def normalize_torch(x, min_val=None, max_val=None):
     PyTorch 归一化到 [0,1]
     :param x: torch.Tensor
     """
-    if min_val is None:
-        min_val = torch.min(x)
-    if max_val is None:
-        max_val = torch.max(x)
-    return (x - min_val) / (max_val - min_val + 1e-8), min_val, max_val
+
+    return (x - min_val) / (max_val - min_val), min_val, max_val
 
 def denormalize_torch(x, min_val, max_val):
     """

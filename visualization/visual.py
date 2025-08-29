@@ -4,7 +4,7 @@ import numpy as np
 import trimesh
 import open3d as o3d
 import torch
-
+import mcubes
 
 def visualize_mesh_ply(mesh_path):
     """
@@ -66,46 +66,172 @@ def visualize_point_cloud(points_tensor, colors_tensor=None):
 
         o3d.visualization.draw_geometries([pcd])
 
-def visualize_point_cloud_red(points_tensor, sdf_tensors=None, truncation=0.1):
+
+# def visualize_point_cloud(points_tensor, sdf_tensors=None, color_tensors=None, truncation=0.1):
+#     """
+#     可视化点云，可选 SDF 筛选和颜色输入
+
+#     :param points_tensor: torch.Tensor 或 np.array, (N_rays, N_samples, 3) 或 (N_points, 3)
+#     :param sdf_tensors: torch.Tensor 或 np.array, 与 points_tensor 对应，可选
+#     :param color_tensors: None 或 (N_points,3) 或 (N_rays,N_samples,3)
+#     :param truncation: float, sdf 截断阈值，只显示 |sdf| < truncation 的点
+#     """
+
+
+#     with torch.no_grad():
+#         # 转 numpy
+
+
+
+#         if isinstance(points_tensor, torch.Tensor):
+#             points = points_tensor.reshape(-1, 3).cpu().numpy()
+#         else:
+#             points = np.array(points_tensor).reshape(-1, 3)
+
+#         if sdf_tensors is not None:
+#             if isinstance(sdf_tensors, torch.Tensor):
+#                 sdf = sdf_tensors.reshape(-1).cpu().numpy()
+#             else:
+#                 sdf = np.array(sdf_tensors).reshape(-1)
+
+#             mask = (np.abs(sdf)*truncation <0.01)
+
+#             # ---- 函数刚进来就打印 ----
+#             print("================================[Raw Point Cloud Debug]================================")
+#             print("Total points (before mask):", len(points))
+#             print("Sample points (first 20):")
+#             for i in range(min(20, len(points))):
+#                 print(f"Point {i}: {points[i]}, SDF: {sdf[i]}")
+#             print("=======================================================================================")
+
+#             points = points[mask]
+#             sdf = sdf[mask]
+
+#             # 如果有 color，也要筛选
+#             if color_tensors is not None:
+#                 if isinstance(color_tensors, torch.Tensor):
+#                     colors = color_tensors.reshape(-1,3).detach().cpu().numpy()
+#                 else:
+#                     colors = np.array(color_tensors).reshape(-1,3)
+#                 colors = colors[mask]
+#             else:
+#                 colors = np.tile(np.array([[1.0, 0.0, 0.0]]), (points.shape[0], 1))  # 默认红色
+
+#             # 打印调试信息
+#             print("================================[Point Cloud Debug]================================")
+#             print("Total points after mask:", len(points))
+#             print("Sample points (first 20):")
+#             for i in range(min(20, len(points))):
+#                 print(f"Point {i}: {points[i]}, SDF: {sdf[i]}, Color: {colors[i]}")
+#             print("=====================================================================================")
+
+#             # 构建 Open3D 点云
+#             pcd = o3d.geometry.PointCloud()
+#             pcd.points = o3d.utility.Vector3dVector(points)
+#             pcd.colors = o3d.utility.Vector3dVector(colors)
+
+#             # 可视化
+#             o3d.visualization.draw_geometries([pcd])
+
+
+def visualize_point_cloud(points_tensor, sdf_tensors=None, color_tensors=None, 
+                          truncation=0.1, use_mcubes=False, resolution=64):
     """
-    :param points_tensor: torch.Tensor, (N_rays, N_samples, 3) 或 (N_points, 3)
-    :param sdf_tensors: torch.Tensor 或 np.array, 与 points_tensor 对应
-    :param truncation: float, sdf 截断阈值
+    可视化点云，可选 SDF 筛选 + Marching Cubes 网格化
+
+    :param points_tensor: torch.Tensor 或 np.array, (N_points, 3)
+    :param sdf_tensors: torch.Tensor 或 np.array, 与 points_tensor 对应，可选
+    :param color_tensors: torch.Tensor 或 np.array, (N_points,3)，可选
+    :param truncation: float, sdf 截断阈值，只显示 |sdf| < truncation 的点
+    :param use_mcubes: bool, 是否用 Marching Cubes 重建表面
+    :param resolution: int, 网格分辨率 (mcubes 用)
     """
+
     with torch.no_grad():
-        # 转 numpy
+        # ---- 转 numpy ----
         if isinstance(points_tensor, torch.Tensor):
             points = points_tensor.reshape(-1, 3).cpu().numpy()
         else:
             points = np.array(points_tensor).reshape(-1, 3)
 
-        # 处理 sdf 并筛选
         if sdf_tensors is not None:
             if isinstance(sdf_tensors, torch.Tensor):
                 sdf = sdf_tensors.reshape(-1).cpu().numpy()
             else:
                 sdf = np.array(sdf_tensors).reshape(-1)
 
-            mask = sdf <= truncation
+            # ---- Debug 打印 ----
+            print("================================[Raw Point Cloud Debug]================================")
+            print("Total points (before mask):", len(points))
+            for i in range(min(20, len(points))):
+                print(f"Point {i}: {points[i]}, SDF: {sdf[i]}")
+            print("=======================================================================================")
+
+            # ---- 点云筛选 (可选) ----
+            mask = np.abs(sdf) < 0.5
             points = points[mask]
             sdf = sdf[mask]
 
-            # 打印前几个 point 和 sdf
-            print("前几个点和对应的 SDF 值:")
+            if color_tensors is not None:
+                if isinstance(color_tensors, torch.Tensor):
+                    colors = color_tensors.reshape(-1, 3).detach().cpu().numpy()
+                else:
+                    colors = np.array(color_tensors).reshape(-1, 3)
+                colors = colors[mask]
+            else:
+                colors = np.tile(np.array([[1.0, 0.0, 0.0]]), (points.shape[0], 1))
+
+            print("================================[Point Cloud Debug]================================")
+            print("Total points after mask:", len(points))
             for i in range(min(20, len(points))):
-                print(f"Point {i}: {points[i]}, SDF: {sdf[i]}")
+                print(f"Point {i}: {points[i]}, SDF: {sdf[i]}, Color: {colors[i]}")
+            print("=====================================================================================")
 
-        # 全部红色
-        colors = np.tile(np.array([[1.0, 0.0, 0.0]]), (points.shape[0], 1))
+            geometries = []
 
-        # 构建 Open3D 点云
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.colors = o3d.utility.Vector3dVector(colors)
+            # ---- 点云可视化 ----
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points)
+            pcd.colors = o3d.utility.Vector3dVector(colors)
+            geometries.append(pcd)
 
-        # 可视化
-        o3d.visualization.draw_geometries([pcd])
+            # ---- Marching Cubes 重建网格 ----
+            if use_mcubes:
+                # 体素化 (插值到规则网格)
+                xmin, ymin, zmin = points.min(axis=0)
+                xmax, ymax, zmax = points.max(axis=0)
 
+                X, Y, Z = np.meshgrid(
+                    np.linspace(xmin, xmax, resolution),
+                    np.linspace(ymin, ymax, resolution),
+                    np.linspace(zmin, zmax, resolution),
+                    indexing="ij"
+                )
+                grid_points = np.stack([X, Y, Z], axis=-1).reshape(-1, 3)
+
+                # 最近邻插值 SDF
+                from scipy.spatial import cKDTree
+                tree = cKDTree(points)
+                dist, idx = tree.query(grid_points, k=1)
+                grid_sdf = sdf[idx].reshape(resolution, resolution, resolution)
+
+                # Marching Cubes
+                print("Running Marching Cubes ...")
+                vertices, triangles = mcubes.marching_cubes(grid_sdf, 0.0)
+
+                # 映射回坐标系
+                scale = np.array([xmax-xmin, ymax-ymin, zmax-zmin]) / resolution
+                vertices = vertices * scale + np.array([xmin, ymin, zmin])
+
+                # 转 Open3D
+                mesh = o3d.geometry.TriangleMesh()
+                mesh.vertices = o3d.utility.Vector3dVector(vertices)
+                mesh.triangles = o3d.utility.Vector3iVector(triangles)
+                mesh.compute_vertex_normals()
+                geometries.append(mesh)
+
+            # ---- 显示 ----
+            o3d.visualization.draw_geometries(geometries)
 
 
 def save_point_cloud(points_tensor, save_path):
@@ -145,9 +271,11 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
     batch_size = 1024*64
     sdf_values = []
     color_values = []
-    for i in range(0, grid.shape[0], batch_size):
-        pts = torch.from_numpy(grid[i:i+batch_size]).float().to(device)
-        sdf_batch, color_batch = query_fn(pts)
+
+    pts_tensor = torch.from_numpy(grid).float().to(device)
+    for start in range(0, pts_tensor.shape[0], batch_size):
+        end = start + batch_size
+        sdf_batch, color_batch = query_fn(pts_tensor[start:end]/10.0)
         sdf_values.append(sdf_batch.cpu())
         color_values.append(color_batch.cpu())
 
@@ -158,7 +286,8 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
     print(f"[Shape] color_values: {color_values.shape}")  # (N,3)
 
     # 筛选表面点
-    mask = (sdf_values > 0) & (sdf_values < truncation)
+    mask =  (np.abs(sdf_values)< 0.1)
+    
 
     print(f"[Shape] mask: {mask.shape}")  # 应该是 (N,)
 
