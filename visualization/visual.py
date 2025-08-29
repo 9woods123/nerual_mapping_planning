@@ -275,7 +275,7 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
     pts_tensor = torch.from_numpy(grid).float().to(device)
     for start in range(0, pts_tensor.shape[0], batch_size):
         end = start + batch_size
-        sdf_batch, color_batch = query_fn(pts_tensor[start:end]/10.0)
+        sdf_batch, color_batch = query_fn(pts_tensor[start:end])
         sdf_values.append(sdf_batch.cpu())
         color_values.append(color_batch.cpu())
 
