@@ -273,6 +273,7 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
     color_values = []
 
     pts_tensor = torch.from_numpy(grid).float().to(device)
+    pts_tensor=pts_tensor/10.0
     for start in range(0, pts_tensor.shape[0], batch_size):
         end = start + batch_size
         sdf_batch, color_batch = query_fn(pts_tensor[start:end])
@@ -301,10 +302,18 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
     print(f"[Shape] surface_colors: {surface_colors.shape}")  
 
     # 可视化
+    # 可视化
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(surface_points)
     pcd.colors = o3d.utility.Vector3dVector(surface_colors)
-    o3d.visualization.draw_geometries([pcd])
+
+    # 添加原点坐标系 (size=1.0 可以调整大小)
+    coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+        size=0.5, origin=[0, 0, 0]
+    )
+
+    o3d.visualization.draw_geometries([pcd, coord_frame])
+
 
     # 保存
     if save_path is not None:

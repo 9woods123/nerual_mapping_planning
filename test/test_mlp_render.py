@@ -76,7 +76,7 @@ def load_depth_image(image_path, factor=5000.0):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=512, num_layers=8)
+neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=256, num_layers=4)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
 optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.001)
@@ -155,10 +155,12 @@ for epoch in range(num_epochs):
 
     # sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
     # sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
-
+    sampled_rays_points_tensor=sampled_rays_points_tensor/10.0
     pred_geo_features, pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(sampled_rays_points_tensor)
 
     # 使用 Renderer 类根据模型的输出进行最终渲染
+    print("sampled_rays_depths_tensor shape:", sampled_rays_depths_tensor.shape)
+    print("pred_rays_sdfs_tensors shape:", pred_rays_sdfs_tensors.shape)
 
     rendered_color, rendered_depth = renderer.render(
         sampled_rays_depths_tensor, 
@@ -168,6 +170,7 @@ for epoch in range(num_epochs):
 
 
 # def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, pred_sdfs):
+
 
 
     loss = total_loss(rendered_color, target_rgb, rendered_depth, sampled_rays_depths_tensor, target_depth.unsqueeze(-1), pred_rays_sdfs_tensors)
@@ -186,8 +189,8 @@ for epoch in range(num_epochs):
 
 # visualize_point_cloud(points_tensor=sampled_rays_points_tensor,sdf_tensors=pred_rays_sdfs_tensors,color_tensors=pred_rays_rgbs_tensor)
 
-bounding_box = np.array([[-2,-2,-2],[2,2,2]])  # 自定义全局范围
-voxel_size = 0.05
+bounding_box = np.array([[-0.8,-0.8,0.5],[0.8,0.8,2.5]])  # 自定义全局范围
+voxel_size = 0.01
 
 
 surface_points = visualize_global_surface(
