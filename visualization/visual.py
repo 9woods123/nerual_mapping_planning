@@ -4,7 +4,6 @@ import numpy as np
 import trimesh
 import open3d as o3d
 import torch
-import mcubes
 
 def visualize_mesh_ply(mesh_path):
     """
@@ -129,40 +128,6 @@ def visualize_point_cloud(points_tensor, sdf_tensors=None, color_tensors=None,
             pcd.colors = o3d.utility.Vector3dVector(colors)
             geometries.append(pcd)
 
-            # ---- Marching Cubes 重建网格 ----
-            if use_mcubes:
-                # 体素化 (插值到规则网格)
-                xmin, ymin, zmin = points.min(axis=0)
-                xmax, ymax, zmax = points.max(axis=0)
-
-                X, Y, Z = np.meshgrid(
-                    np.linspace(xmin, xmax, resolution),
-                    np.linspace(ymin, ymax, resolution),
-                    np.linspace(zmin, zmax, resolution),
-                    indexing="ij"
-                )
-                grid_points = np.stack([X, Y, Z], axis=-1).reshape(-1, 3)
-
-                # 最近邻插值 SDF
-                from scipy.spatial import cKDTree
-                tree = cKDTree(points)
-                dist, idx = tree.query(grid_points, k=1)
-                grid_sdf = sdf[idx].reshape(resolution, resolution, resolution)
-
-                # Marching Cubes
-                print("Running Marching Cubes ...")
-                vertices, triangles = mcubes.marching_cubes(grid_sdf, 0.0)
-
-                # 映射回坐标系
-                scale = np.array([xmax-xmin, ymax-ymin, zmax-zmin]) / resolution
-                vertices = vertices * scale + np.array([xmin, ymin, zmin])
-
-                # 转 Open3D
-                mesh = o3d.geometry.TriangleMesh()
-                mesh.vertices = o3d.utility.Vector3dVector(vertices)
-                mesh.triangles = o3d.utility.Vector3iVector(triangles)
-                mesh.compute_vertex_normals()
-                geometries.append(mesh)
 
             # ---- 显示 ----
             o3d.visualization.draw_geometries(geometries)

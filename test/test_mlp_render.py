@@ -4,8 +4,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from network_model.nerual_render_model import NeuralRenderingModel,SimpleMLPModel
 from slam_core.ray_casting import RayCasting
+from slam_core.keyframe import Keyframe
 from slam_core.renderer import Renderer
 from network_model.loss_calculate import *
+from visualization.mesher import Mesher
 from utils.utils import *
 from visualization.visual import *
 
@@ -83,7 +85,7 @@ intrinsic_matrix = np.array([[525.0, 0, 319.5],
 
 truncation=0.1  # 10cm
 
-pose = np.eye(4)  # 假设相机位姿是单位矩阵
+init_pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
 
 color_map=load_color_image("sensor_data/color.png")
@@ -98,7 +100,7 @@ renderer = Renderer(model=neural_rendering_model,tr=truncation)
 
 
 
-num_epochs = 500  # 设置训练的轮数
+num_epochs = 200  # 设置训练的轮数
 
 
 pred_rays_rgbs_tensor=None
@@ -109,12 +111,15 @@ all_rays_endpoint_3d=None
 all_rays_endpoint_3d_first_frame=None
 
 
-
+keyframe_dict=[]
+first_keyframe=Keyframe(0.0,init_pose,depth_map,color_map, fx=525.0, fy=525.0, cx=319.5, cy=239.5,
+                frame_id=0)
+keyframe_dict.append(first_keyframe)
 
 for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
     
-    rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, pose, 480, 640)
+    rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, init_pose, 480, 640)
     target_rgb = torch.from_numpy(np.array(rgb_values, dtype=np.float32)).to(device)  # ndarray -> Tensor
 
     # 步骤 4: 沿射线采样
@@ -162,11 +167,6 @@ for epoch in range(num_epochs):
         pred_rays_rgbs_tensor
         )
 
-
-# def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, pred_sdfs):
-
-
-
     loss = total_loss(rendered_color, target_rgb, rendered_depth, sampled_rays_depths_tensor, target_depth.unsqueeze(-1), pred_rays_sdfs_tensors)
 
     # 打印损失
@@ -178,21 +178,18 @@ for epoch in range(num_epochs):
     optimizer.step()       # 更新模型参数
 
 
+mesher = Mesher(min_x=-3, min_y=-3, min_z=-3,
+                max_x=3, max_y=3, max_z=3,
+                fx=525.0, fy=525.0, cx=319.5, cy=239.5,
+                width=640, height=480,
+                resolution=0.01)
 
-# visualize_point_cloud(all_rays_endpoint_3d,rendered_color)
-
-# visualize_point_cloud(points_tensor=sampled_rays_points_tensor,sdf_tensors=pred_rays_sdfs_tensors,color_tensors=pred_rays_rgbs_tensor)
-
-bounding_box = np.array([[-0.8,-0.8,0.5],[0.8,0.8,2.5]])  # 自定义全局范围
-voxel_size = 0.01
-
-
-surface_points = visualize_global_surface(
-    query_fn=renderer.query_sdf_color_function, 
-    bounding_box=bounding_box, 
-    voxel_size=voxel_size, 
-    truncation=0.1,
-    device='cuda',
-    save_path='./global_surface.ply'
+# 4. 调用 generate_surface_pointcloud
+mesher.generate_surface_pointcloud(
+    query_fn=renderer.query_sdf_color_function,
+    keyframe_dict=keyframe_dict,
+    batch_size=65536,
+    save_path="./output_surface.ply",
+    device=device
 )
 

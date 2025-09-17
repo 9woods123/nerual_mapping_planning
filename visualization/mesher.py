@@ -1,18 +1,14 @@
 
 import sys
 import os
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# from slam_core.keyframe import Keyframe
 
-from frustum_culling import FrustumCulling
+from visualization.frustum_culling import FrustumCulling
 
 import numpy as np
-import trimesh
 import open3d as o3d
 import torch
-import mcubes
-import trimesh
 
 
 
@@ -27,7 +23,7 @@ class Mesher:
         """
         self.resolution = resolution
         self.bound = [min_x, min_y, min_z, max_x, max_y, max_z]  
-        self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height, pose=np.eye(4))
+        self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height)
 
 
     def generate_grid_points(self, device='cpu'):
@@ -49,9 +45,8 @@ class Mesher:
         return points_tensor
 
 
-
     def generate_surface_pointcloud(self, query_fn, keyframe_dict,
-                                    batch_size=65536, forecast_margin=0.5,
+                                    batch_size=65536,
                                     save_path=None, device='cuda'):
         """
         生成表面点云（GPU 加速多帧 frustum culling）
@@ -75,8 +70,8 @@ class Mesher:
 
         # 3. GPU 批量 frustum culling
         seen_mask, forecast_mask, _ = self.frustum_culler.split_points_frustum_multi(
-            grid_points, c2w_all, near=0.1, far=10.0, forecast_margin=forecast_margin
-        )
+            grid_points, c2w_all)
+        
         grid_seen = grid_points[seen_mask]
 
         # 4. 查询 SDF 和颜色
