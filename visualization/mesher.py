@@ -51,63 +51,66 @@ class Mesher:
 
 
     def generate_surface_pointcloud(self, query_fn, keyframe_dict,
-                                        batch_size=65536, forecast_margin=0.5, save_path=None,
-                                        device='cuda'):
-            """
-            生成表面点云：网格点 -> 分类 -> 查询 SDF 和颜色 -> 筛选表面点 -> 可视化和保存
+                                    batch_size=65536, forecast_margin=0.5,
+                                    save_path=None, device='cuda'):
+        """
+        生成表面点云（GPU 加速多帧 frustum culling）
 
-            Args:
-                query_fn (function): 输入 pts_tensor, 返回 (sdf_values, color_values)
-                frustum_cullers (list[FrustumCulling]): 每个关键帧对应的 FrustumCulling 对象
-                keyframe_dict (list): 关键帧信息
-                batch_size (int): 批量查询大小
-                forecast_margin (float): 预测区域扩展
-                save_path (str): 保存路径
-                device (str): torch 设备
+        Args:
+            query_fn (function): 输入 pts_tensor, 返回 (sdf_values, color_values)
+            keyframe_dict (list): 关键帧信息
+            batch_size (int): 批量查询大小
+            forecast_margin (float): 预测区域扩展
+            save_path (str): 保存路径
+            device (str): torch 设备
 
-            Returns:
-                surface_points (np.ndarray): 表面点位置
-            """
-            # 1. 生成网格点
-            grid = self.generate_grid_points()
+        Returns:
+            surface_points (np.ndarray): 表面点位置
+        """
+        # 1. 生成网格点
+        grid_points = self.generate_grid_points(device=device)  # (N,3)
 
-            # 2. 分类
-            seen_mask, _, _ = self.split_points_frustum(grid, c2w, near=0.1, far=10.0, forecast_margin=0.25)
-            
+        # 2. 从 keyframe_dict 提取 c2w
+        c2w_all = torch.stack([torch.tensor(kf.c2w, dtype=torch.float32, device=device) for kf in keyframe_dict], dim=0)  # (F,4,4)
 
-            grid_seen = grid[seen_mask]
+        # 3. GPU 批量 frustum culling
+        seen_mask, forecast_mask, _ = self.frustum_culler.split_points_frustum_multi(
+            grid_points, c2w_all, near=0.1, far=10.0, forecast_margin=forecast_margin
+        )
+        grid_seen = grid_points[seen_mask]
 
-            # 3. 查询 SDF 和颜色
-            sdf_values, color_values = [], []
-            pts_tensor = torch.from_numpy(grid_seen).float().to(device)
-            for start in range(0, pts_tensor.shape[0], batch_size):
-                end = start + batch_size
-                sdf_batch, color_batch = query_fn(pts_tensor[start:end])
-                sdf_values.append(sdf_batch.cpu())
-                color_values.append(color_batch.cpu())
+        # 4. 查询 SDF 和颜色
+        sdf_values, color_values = [], []
+        pts_tensor = grid_seen
+        for start in range(0, pts_tensor.shape[0], batch_size):
+            end = start + batch_size
+            sdf_batch, color_batch = query_fn(pts_tensor[start:end])
+            sdf_values.append(sdf_batch.cpu())
+            color_values.append(color_batch.cpu())
 
-            sdf_values = torch.cat(sdf_values, dim=0).numpy()
-            color_values = torch.cat(color_values, dim=0).numpy()
+        sdf_values = torch.cat(sdf_values, dim=0).numpy()
+        color_values = torch.cat(color_values, dim=0).numpy()
 
-            # 4. 筛选表面点
-            mask = np.abs(sdf_values) < 0.1
-            surface_points = grid_seen[mask.squeeze()]
-            surface_colors = color_values[mask.squeeze()]
+        # 5. 筛选表面点
+        mask = np.abs(sdf_values) < 0.1
+        surface_points = grid_seen.cpu().numpy()[mask.squeeze()]
+        surface_colors = color_values[mask.squeeze()]
 
-            # 5. 可视化
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(surface_points)
-            pcd.colors = o3d.utility.Vector3dVector(surface_colors)
+        # 6. 可视化
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(surface_points)
+        pcd.colors = o3d.utility.Vector3dVector(surface_colors)
 
-            coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-                size=0.5, origin=[0, 0, 0]
-            )
-            o3d.visualization.draw_geometries([pcd, coord_frame])
+        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=0.5, origin=[0, 0, 0]
+        )
+        o3d.visualization.draw_geometries([pcd, coord_frame])
 
-            # 6. 保存
-            if save_path is not None:
-                os.makedirs(os.path.split(save_path)[0], exist_ok=True)
-                o3d.io.write_point_cloud(save_path, pcd)
-                print(f"[Saved] Surface point cloud saved to {save_path}")
+        # 7. 保存
+        if save_path is not None:
+            import os
+            os.makedirs(os.path.split(save_path)[0], exist_ok=True)
+            o3d.io.write_point_cloud(save_path, pcd)
+            print(f"[Saved] Surface point cloud saved to {save_path}")
 
-            return surface_points
+        return surface_points

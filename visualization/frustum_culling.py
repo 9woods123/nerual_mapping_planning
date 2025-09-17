@@ -29,6 +29,7 @@ class FrustumCulling:
         Args:
             points: (N,3) torch.Tensor [world]
             c2w_all: (B,4,4) torch.Tensor [camera-to-world] for all frames
+
         Returns:
             seen_mask: (N,) bool
             forecast_mask: (N,) bool
@@ -48,6 +49,7 @@ class FrustumCulling:
 
         # 2. 深度判断
         z = pts_cam[:, :, 2]  # (B,N)
+
         depth_valid = (z > near) & (z < far)
 
         # 3. 投影到像素
@@ -62,6 +64,7 @@ class FrustumCulling:
         margin = forecast_margin * torch.clamp(z, min=1e-6)
         inside_forecast = (x >= -margin) & (x < self.W + margin) & \
                           (y >= -margin) & (y < self.H + margin)
+        
         forecast = depth_valid & inside_forecast & (~seen)
 
         # 6. 合并 B 个相机结果
