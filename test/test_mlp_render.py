@@ -16,13 +16,7 @@ import numpy as np
 import cv2
 import numpy as np
 
-# fx = 525.0  # focal length x
-# fy = 525.0  # focal length y
-# cx = 319.5  # optical center x
-# cy = 239.5  # optical center y
 
-# factor = 5000 # for the 16-bit PNG files
-# OR: factor = 1 # for the 32-bit float images in the ROS bag files
 
 
 def load_color_image(image_path):
@@ -76,7 +70,7 @@ def load_depth_image(image_path, factor=5000.0):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 步骤 1: 初始化模型
-neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=256, num_layers=4)
+neural_rendering_model = SimpleMLPModel(input_dim=3, hidden_dim=128, num_layers=4)
 neural_rendering_model.to(device)  # 将模型移动到设备
 
 optimizer = optim.Adam(neural_rendering_model.parameters(), lr=0.001)
@@ -155,7 +149,7 @@ for epoch in range(num_epochs):
 
     # sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
     # sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
-    sampled_rays_points_tensor=sampled_rays_points_tensor/10.0
+    # sampled_rays_points_tensor=sampled_rays_points_tensor/10.0
     pred_geo_features, pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(sampled_rays_points_tensor)
 
     # 使用 Renderer 类根据模型的输出进行最终渲染

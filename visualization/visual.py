@@ -67,72 +67,6 @@ def visualize_point_cloud(points_tensor, colors_tensor=None):
         o3d.visualization.draw_geometries([pcd])
 
 
-# def visualize_point_cloud(points_tensor, sdf_tensors=None, color_tensors=None, truncation=0.1):
-#     """
-#     可视化点云，可选 SDF 筛选和颜色输入
-
-#     :param points_tensor: torch.Tensor 或 np.array, (N_rays, N_samples, 3) 或 (N_points, 3)
-#     :param sdf_tensors: torch.Tensor 或 np.array, 与 points_tensor 对应，可选
-#     :param color_tensors: None 或 (N_points,3) 或 (N_rays,N_samples,3)
-#     :param truncation: float, sdf 截断阈值，只显示 |sdf| < truncation 的点
-#     """
-
-
-#     with torch.no_grad():
-#         # 转 numpy
-
-
-
-#         if isinstance(points_tensor, torch.Tensor):
-#             points = points_tensor.reshape(-1, 3).cpu().numpy()
-#         else:
-#             points = np.array(points_tensor).reshape(-1, 3)
-
-#         if sdf_tensors is not None:
-#             if isinstance(sdf_tensors, torch.Tensor):
-#                 sdf = sdf_tensors.reshape(-1).cpu().numpy()
-#             else:
-#                 sdf = np.array(sdf_tensors).reshape(-1)
-
-#             mask = (np.abs(sdf)*truncation <0.01)
-
-#             # ---- 函数刚进来就打印 ----
-#             print("================================[Raw Point Cloud Debug]================================")
-#             print("Total points (before mask):", len(points))
-#             print("Sample points (first 20):")
-#             for i in range(min(20, len(points))):
-#                 print(f"Point {i}: {points[i]}, SDF: {sdf[i]}")
-#             print("=======================================================================================")
-
-#             points = points[mask]
-#             sdf = sdf[mask]
-
-#             # 如果有 color，也要筛选
-#             if color_tensors is not None:
-#                 if isinstance(color_tensors, torch.Tensor):
-#                     colors = color_tensors.reshape(-1,3).detach().cpu().numpy()
-#                 else:
-#                     colors = np.array(color_tensors).reshape(-1,3)
-#                 colors = colors[mask]
-#             else:
-#                 colors = np.tile(np.array([[1.0, 0.0, 0.0]]), (points.shape[0], 1))  # 默认红色
-
-#             # 打印调试信息
-#             print("================================[Point Cloud Debug]================================")
-#             print("Total points after mask:", len(points))
-#             print("Sample points (first 20):")
-#             for i in range(min(20, len(points))):
-#                 print(f"Point {i}: {points[i]}, SDF: {sdf[i]}, Color: {colors[i]}")
-#             print("=====================================================================================")
-
-#             # 构建 Open3D 点云
-#             pcd = o3d.geometry.PointCloud()
-#             pcd.points = o3d.utility.Vector3dVector(points)
-#             pcd.colors = o3d.utility.Vector3dVector(colors)
-
-#             # 可视化
-#             o3d.visualization.draw_geometries([pcd])
-
 
 def visualize_point_cloud(points_tensor, sdf_tensors=None, color_tensors=None, 
                           truncation=0.1, use_mcubes=False, resolution=64):
@@ -273,7 +207,7 @@ def visualize_global_surface(query_fn, bounding_box, voxel_size=0.05, truncation
     color_values = []
 
     pts_tensor = torch.from_numpy(grid).float().to(device)
-    pts_tensor=pts_tensor/10.0
+    # pts_tensor=pts_tensor/10.0
     for start in range(0, pts_tensor.shape[0], batch_size):
         end = start + batch_size
         sdf_batch, color_batch = query_fn(pts_tensor[start:end])
