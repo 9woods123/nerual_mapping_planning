@@ -1,5 +1,63 @@
 import numpy as np
 import torch
+import cv2
+
+
+
+
+
+
+def load_color_image(image_path):
+    """
+    读取并返回颜色图像
+    
+    :param image_path: 颜色图像的路径
+    :return: 读取的颜色图像 (height, width, 3) 类型为 uint8
+    """
+    color_image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # 读取为彩色图像
+    
+    if color_image is None:
+        raise FileNotFoundError(f"无法读取图像文件: {image_path}")
+    
+    color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)  # 转换为 RGB 格式
+
+
+    return np.array(color_image)  # 转为 NumPy 数组格式
+
+
+def load_depth_image(image_path, factor=5000.0):
+    """
+    读取并返回深度图像，并将其转化为真实的深度值
+    
+    :param image_path: 深度图像的路径
+    :param factor: 深度图像的缩放因子，通常为 5000 对应 16-bit 图像
+    :return: 真实深度图 (height, width) 类型为 float32
+    """
+
+    depth_image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)  # 读取为原始深度图像（16-bit 或 32-bit）
+    print(depth_image.dtype, depth_image.shape)
+
+
+    if depth_image is None:
+        raise FileNotFoundError(f"无法读取深度图像文件: {image_path}")
+    
+    # 转换为实际的深度值
+    depth_image = depth_image.astype(np.float32) / factor
+
+    nonzero_depths = depth_image[depth_image > 0]
+
+    # print("非零点数量:", nonzero_depths.shape[0])
+    # print("前20个非零深度值:", nonzero_depths[:200])
+    # print("最小非零深度:", np.min(nonzero_depths))
+    # print("最大非零深度:", np.max(nonzero_depths))
+
+    return depth_image  # 返回深度图像
+
+
+
+
+
+
 
 # ========== NumPy 版本 ==========
 def normalize_numpy(x, min_val=None, max_val=None):

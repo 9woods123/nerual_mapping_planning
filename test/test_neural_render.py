@@ -13,7 +13,6 @@ import torch.optim as optim
 import torch
 import numpy as np
 import cv2
-import numpy as np
 
 # fx = 525.0  # focal length x
 # fy = 525.0  # focal length y
