@@ -22,3 +22,11 @@ print("\nexpanded_surface:\n", expanded_surface)
 diff = observe_depth - expanded_surface
 
 print("\ndiff:\n", diff)
+
+
+
+A = torch.randn(10, 3, 4)   # 10个 (3x4) 矩阵
+B = torch.randn(10, 4, 5)   # 10个 (4x5) 矩阵
+
+C = torch.bmm(A, B)         # 结果是 10个 (3x5) 矩阵
+print(C.shape)              # torch.Size([10, 3, 5])

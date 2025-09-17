@@ -30,54 +30,23 @@ class Mesher:
         self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height, pose=np.eye(4))
 
 
-    def generate_grid_points(self):
+    def generate_grid_points(self, device='cpu'):
         """
         根据边界和分辨率生成网格点
         Returns:
-            points (np.ndarray): shape (N,3)，场景中均匀分布的点
+            points (torch.Tensor): shape (N,3)，场景中均匀分布的点
         """
         assert self.bound is not None, "Scene bound is not set!"
         min_x, min_y, min_z, max_x, max_y, max_z = self.bound
 
-        xs = np.arange(min_x, max_x, self.resolution)
-        ys = np.arange(min_y, max_y, self.resolution)
-        zs = np.arange(min_z, max_z, self.resolution)
+        xs = torch.arange(min_x, max_x, self.resolution, device=device)
+        ys = torch.arange(min_y, max_y, self.resolution, device=device)
+        zs = torch.arange(min_z, max_z, self.resolution, device=device)
 
-        grid = np.stack(np.meshgrid(xs, ys, zs, indexing='ij'), axis=-1)
-        points = grid.reshape(-1, 3)
+        grid = torch.stack(torch.meshgrid(xs, ys, zs, indexing='ij'), dim=-1)
+        points_tensor = grid.reshape(-1, 3)
         
-        return points
-
-
-
-    def point_mask(self, points, keyframe_dict, forecast_margin=0.25):
-        """
-        将点分类为 seen / forecast / unseen
-        Args:
-            points (np.ndarray): shape (N,3)，场景网格点
-            keyframe_dict (list): 关键帧信息列表
-            forecast_margin (float): 预测区域扩展距离
-        Returns:
-            seen_mask (np.ndarray): 布尔数组，True 表示点被至少一个相机看到
-            forecast_mask (np.ndarray): 预测区域内的点
-            unseen_mask (np.ndarray): 其他点
-        """
-
-        N = points.shape[0]
-        seen_mask = np.zeros(N, dtype=bool)
-        forecast_mask = np.zeros(N, dtype=bool)
-
-        for i, keyframe in enumerate(keyframe_dict):
-            self.frustum_culler.set_camera_pose(keyframe.c2w)
-            s, f, _ = self.frustum_culler.split_points_frustum(points, 
-                                                          near=0.1, 
-                                                          far=10.0, 
-                                                          forecast_margin=forecast_margin)
-            seen_mask |= s
-            forecast_mask |= f
-
-        unseen_mask = ~(seen_mask | forecast_mask)
-        return seen_mask, forecast_mask, unseen_mask
+        return points_tensor
 
 
 
@@ -103,7 +72,9 @@ class Mesher:
             grid = self.generate_grid_points()
 
             # 2. 分类
-            seen_mask, _, _ = self.point_mask(grid,keyframe_dict, forecast_margin)
+            seen_mask, _, _ = self.split_points_frustum(grid, c2w, near=0.1, far=10.0, forecast_margin=0.25)
+            
+
             grid_seen = grid[seen_mask]
 
             # 3. 查询 SDF 和颜色
