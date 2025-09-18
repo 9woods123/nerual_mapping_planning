@@ -5,6 +5,8 @@
 """
 
 from types import SimpleNamespace
+from typing import Optional
+
 import yaml
 import os
 
@@ -21,12 +23,32 @@ camera_params = {
     "forecast_margin": 0.25,
 }
 
+
+bounding_box ={
+    "min_x": -5.0,
+    "max_x": 5.0,
+    "min_y": -5.0,
+    "max_y": 5.0,
+    "min_z": -1.0,
+    "max_z": 5.0,
+}
+
+
 mapping_params = {
     "truncation": 0.1,
     "resolution": 0.01,
     "batch_size": 65536,
-    "num_epochs": 200,
-    "lr": 1e-3,
+    "lr": 1e-3,         # Mapper 学习率
+    "iters": 100,       # Mapper 内部优化迭代次数
+    "downsample_ratio": 0.001,  # 对输入图像下采样比例
+}
+
+
+tracking_params = {
+    "lr": 1e-2,           # 优化位姿学习率
+    "iters": 20,          # 位姿优化迭代次数
+    "n_samples": 35,      # 每条射线采样点数
+    "downsample_ratio": 0.0005,  # 对输入图像下采样比例
 }
 
 model_params = {
@@ -55,14 +77,21 @@ def merge_dict(d, u):
             d[k] = v
 
 
-# ============ 参数类 =============
+
 class Params:
+    camera: Optional[SimpleNamespace]
+    mapping: Optional[SimpleNamespace]
+    model: Optional[SimpleNamespace]
+    bounding_box: Optional[SimpleNamespace]
+    mesher: Optional[SimpleNamespace]    
     def __init__(self, yaml_file=None):
         # 默认参数
         self._dict = {
             "camera": camera_params,
             "mapping": mapping_params,
             "model": model_params,
+            "bounding_box":bounding_box,
+            "tracking":tracking_params
         }
 
         # 如果有 yaml 文件，覆盖默认参数
@@ -85,5 +114,4 @@ class Params:
 
 # ============ 导出全局 params ============
 # 可以选择传入 YAML 文件
-params = Params()  # 默认
 # params = Params("config.yaml")  # 使用 YAML 覆盖默认参数

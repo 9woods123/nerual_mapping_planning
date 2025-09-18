@@ -85,8 +85,8 @@ truncation=0.1  # 10cm
 init_pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
 
-color_map=load_color_image("sensor_data/color.png")
-depth_map=load_depth_image("sensor_data/depth.png")
+color_map=load_color_image("sensor_data/color/color_1.png")
+depth_map=load_depth_image("sensor_data/depth/depth_1.png")
 color_map, c_min_val, c_max_val = normalize_numpy(color_map, 0, 255)
 
 
