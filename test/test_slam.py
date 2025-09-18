@@ -21,7 +21,6 @@ class FrameLoader:
         depth_file = os.path.join(self.depth_dir, f"depth_{idx}.png")
 
         color = load_color_image(color_file)
-        color, c_min_val, c_max_val = normalize_numpy(color, 0, 255)
 
         depth = load_depth_image(depth_file)
         return color, depth

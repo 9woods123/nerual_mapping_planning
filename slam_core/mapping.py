@@ -29,11 +29,9 @@ class Mapper:
         iteration_number=0
 
         if is_frist_frame :
-            iteration_number=5*self.iters
+            iteration_number=2*self.iters
         else:
             iteration_number=self.iters
-
-
 
         # === 多轮迭代优化 ===
 

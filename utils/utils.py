@@ -21,8 +21,10 @@ def load_color_image(image_path):
     
     color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)  # 转换为 RGB 格式
 
+    color_image_np = np.array(color_image)
+    color, c_min_val, c_max_val = normalize_numpy(color_image_np, 0, 255)
 
-    return np.array(color_image)  # 转为 NumPy 数组格式
+    return color  
 
 
 def load_depth_image(image_path, factor=5000.0):
