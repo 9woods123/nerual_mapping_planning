@@ -73,6 +73,7 @@ class SLAM:
 
         self.last_pose = None
         self.prev_pose = None
+        self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution)
 
 
     def main_loop(self, color, depth, index,mesh_output_dir="./"):
@@ -80,23 +81,22 @@ class SLAM:
             timestamp = time.time()  # 当前时间戳，单位秒
             
 
-            track_pose, _ = self.tracker.track(color, depth, self.is_first_frame)
+            track_pose, track_loss = self.tracker.track(color, depth, self.is_first_frame)
             print("track_pose:",track_pose)
-
-            loss, joint_optim_pose = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
             
+            map_loss, joint_optim_pose = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
             self.tracker.update_last_pose(joint_optim_pose)
 
-            print("joint_optim_pose:",joint_optim_pose)
+            print(" ",index,"   Track Loss:",track_loss, " Map Loss:",map_loss )
 
+            if index % self.mesh_every == 0:
+                # --- 保存 Keyframe ---
+                self.keyframes.append(Keyframe(index, track_pose, depth, color, self.fx, self.fy, self.cx, self.cy, timestamp))
 
-            # --- 保存 Keyframe ---
-            self.keyframes.append(Keyframe(index, track_pose, depth, color, self.fx, self.fy, self.cx, self.cy, timestamp))
 
             # --- 每隔 mesh_every 帧生成一次点云 ---
             if index % self.mesh_every == 0:
-                mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution)
-                mesher.generate_surface_pointcloud(
+                self.mesher.generate_surface_pointcloud(
                     query_fn=self.mapper.renderer.query_sdf_color_function,
                     keyframe_dict=self.keyframes,
                     batch_size=65536,
@@ -106,5 +106,5 @@ class SLAM:
             
 
             if self.is_first_frame: 
-
                 self.is_first_frame=False
+

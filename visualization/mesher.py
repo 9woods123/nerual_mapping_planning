@@ -9,7 +9,7 @@ from visualization.frustum_culling import FrustumCulling
 import numpy as np
 import open3d as o3d
 import torch
-
+import threading
 
 
 class Mesher:
@@ -24,8 +24,8 @@ class Mesher:
         self.resolution = resolution
         self.bound = [min_x, min_y, min_z, max_x, max_y, max_z]  
         self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height)
-
-
+        
+    
     def generate_grid_points(self, device='cpu'):
         """
         根据边界和分辨率生成网格点
@@ -68,7 +68,6 @@ class Mesher:
         # 2. 从 keyframe_dict 提取 c2w
         c2w_all = torch.stack([torch.tensor(kf.c2w, dtype=torch.float32, device=device) for kf in keyframe_dict], dim=0)  # (F,4,4)
 
-        print("c2w_all:",c2w_all)
         # 3. GPU 批量 frustum culling
         seen_mask, forecast_mask, _ = self.frustum_culler.split_points_frustum_multi(
             grid_points, c2w_all)
@@ -78,6 +77,7 @@ class Mesher:
         # 4. 查询 SDF 和颜色
         sdf_values, color_values = [], []
         pts_tensor = grid_seen
+
         for start in range(0, pts_tensor.shape[0], batch_size):
             end = start + batch_size
             sdf_batch, color_batch = query_fn(pts_tensor[start:end])
@@ -97,10 +97,21 @@ class Mesher:
         pcd.points = o3d.utility.Vector3dVector(surface_points)
         pcd.colors = o3d.utility.Vector3dVector(surface_colors)
 
+
+
         coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
             size=0.5, origin=[0, 0, 0]
         )
-        o3d.visualization.draw_geometries([pcd, coord_frame])
+
+        print("c2w_all:",c2w_all)
+        frames = []
+        for c2w in c2w_all:  
+            mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
+            mesh_frame.transform(c2w.cpu().numpy())
+            frames.append(mesh_frame)
+
+        o3d.visualization.draw_geometries([pcd, coord_frame] + frames)
+
 
         # 7. 保存
         if save_path is not None:
@@ -110,3 +121,4 @@ class Mesher:
             print(f"[Saved] Surface point cloud saved to {save_path}")
 
         return surface_points
+    

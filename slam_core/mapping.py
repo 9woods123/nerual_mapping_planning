@@ -42,12 +42,13 @@ class Mapper:
         # print("DEBUG: model param example id:", id(next(self.model.parameters())))
 
 
-        self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
+        with torch.no_grad():
+            self.delta_se3.zero_()  # 将 tensor 所有元素置0
 
         iteration_number=0
 
         if is_frist_frame :
-            iteration_number=2*self.iters
+            iteration_number=5*self.iters
         else:
             iteration_number=self.iters
 

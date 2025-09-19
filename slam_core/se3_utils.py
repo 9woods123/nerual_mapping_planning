@@ -9,12 +9,15 @@ def se3_to_SE3(xi):
     theta = torch.norm(omega) + 1e-8
     I = torch.eye(3, device=xi.device)
 
-    omega_hat = torch.tensor([
-        [0, -omega[2], omega[1]],
-        [omega[2], 0, -omega[0]],
-        [-omega[1], omega[0], 0]
-    ], device=xi.device)
-
+    # 正确构造 omega_hat，保持梯度链
+    omega_hat = torch.zeros(3, 3, device=xi.device, dtype=xi.dtype)
+    omega_hat[0,1] = -omega[2]
+    omega_hat[0,2] =  omega[1]
+    omega_hat[1,0] =  omega[2]
+    omega_hat[1,2] = -omega[0]
+    omega_hat[2,0] = -omega[1]
+    omega_hat[2,1] =  omega[0]
+    
     R = I + (torch.sin(theta) / theta) * omega_hat + \
         ((1 - torch.cos(theta)) / (theta ** 2)) * (omega_hat @ omega_hat)
 

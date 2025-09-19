@@ -71,13 +71,13 @@ class Tracker:
 
         # === 初始化位姿 ===
         pred_pose = self.predict_pose()  # torch [4,4]
-
+        print("pred_pose:",pred_pose)
         if is_first_frame:
             return pred_pose, 0
 
 
-        self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
-
+        with torch.no_grad():
+            self.delta_se3.zero_()  # 将 tensor 所有元素置0
 
         for _ in range(self.iters):
             self.optimizer.zero_grad()
@@ -97,8 +97,8 @@ class Tracker:
                              all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
             loss.backward()
             self.optimizer.step()
-
-
+   
+        
         final_pose = (se3_to_SE3(self.delta_se3) @ pred_pose).detach().clone()  # torch [4,4]
 
 
