@@ -35,6 +35,9 @@ class Tracker:
         self.lr = lr
         self.iters = iters
 
+        self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
+        self.optimizer = torch.optim.Adam([self.delta_se3], lr=self.lr)
+
         # 保存前两帧 pose（torch Tensor）
         self.last_pose: torch.Tensor = None
         self.prev_pose: torch.Tensor = None
@@ -59,15 +62,14 @@ class Tracker:
             return pred_pose, 0
 
 
-        delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
-        optimizer = torch.optim.Adam([delta_se3], lr=self.lr)
+        self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
 
         target_rgb = torch.tensor(color.reshape(-1, 3), dtype=torch.float32, device=self.device)
 
         for _ in range(self.iters):
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
 
-            pose_mat =  se3_to_SE3(delta_se3) @ pred_pose   # torch [4,4]
+            pose_mat =  se3_to_SE3(self.delta_se3) @ pred_pose   # torch [4,4]
 
             rays_3d, rgb_values, depths = self.ray_casting.cast_rays(
                 depth,
@@ -94,9 +96,9 @@ class Tracker:
                               sampled_depths, target_depths.unsqueeze(-1), pred_sdfs)
 
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
 
-        final_pose = (se3_to_SE3(delta_se3) @ pred_pose).detach().clone()  # torch [4,4]
+        final_pose = (se3_to_SE3(self.delta_se3) @ pred_pose).detach().clone()  # torch [4,4]
 
         # 更新 last/prev pose
         self.prev_pose = self.last_pose

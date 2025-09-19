@@ -22,7 +22,11 @@ class Mapper:
         self.model = model
         self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
 
-        self.optimizer = optim.Adam(list(self.model.parameters()) + [self.delta_se3], lr=lr)
+        self.optimizer = torch.optim.Adam([
+            {"params": self.model.parameters(), "lr": lr},
+            {"params": [self.delta_se3], "lr": lr*5}
+        ])
+        
         self.renderer = Renderer(self.model, truncation)
         self.ray_casting = RayCasting(np.array([[fx, 0, cx],[0, fy, cy],[0,0,1]]),sample_ratio=downsample_ratio)
         self.iters=iters
