@@ -19,7 +19,7 @@ camera_params = {
     "width": 640,
     "height": 480,
     "near": 0.1,
-    "far": 10.0,
+    "far": 2.5,
     "forecast_margin": 0.25,
 }
 
@@ -40,7 +40,7 @@ mapping_params = {
     "batch_size": 65536,
     "lr": 1e-3,         # Mapper 学习率
     "iters": 100,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.001,  # 对输入图像下采样比例
+    "downsample_ratio": 0.0005,  # 对输入图像下采样比例
 }
 
 

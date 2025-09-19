@@ -47,13 +47,27 @@ class Tracker:
         if self.last_pose is None:
             return torch.eye(4, dtype=torch.float32, device=self.device)
         if self.prev_pose is None:
-            return self.last_pose.clone()
+            self.prev_pose=self.last_pose
+            return self.last_pose
 
         # 相对运动 (torch)
+        
         relative_motion = torch.linalg.inv(self.prev_pose) @ self.last_pose
         return self.last_pose @ relative_motion
 
+
+    def record_pose(self, last_pose, prev_pose):
+        self.prev_pose = prev_pose
+        self.last_pose = last_pose
+
+    def update_last_pose(self,last_pose):
+        ##TODO this has anologic problem
+        self.prev_pose = self.last_pose
+        self.last_pose = last_pose
+
+
     def track(self, color, depth, is_first_frame):
+
 
         # === 初始化位姿 ===
         pred_pose = self.predict_pose()  # torch [4,4]
@@ -64,45 +78,29 @@ class Tracker:
 
         self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
 
-        target_rgb = torch.tensor(color.reshape(-1, 3), dtype=torch.float32, device=self.device)
 
         for _ in range(self.iters):
             self.optimizer.zero_grad()
 
             pose_mat =  se3_to_SE3(self.delta_se3) @ pred_pose   # torch [4,4]
 
-            rays_3d, rgb_values, depths = self.ray_casting.cast_rays(
-                depth,
-                color,
-                pose_mat,  # 这里 ray_casting 还依赖 numpy
-                self.height,
-                self.width
-            )
-
-            all_pts, all_depths, _, all_end_depths = self.ray_casting.sample_points_along_ray(
+            rays_3d, rgb_values, depths = self.ray_casting.cast_rays(depth, color, pose_mat,self.height, self.width)
+            all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
                 ray_origin=pose_mat[:3, 3],
                 rays_direction_list=rays_3d,
                 depths_list=depths
             )
+            _, pred_sdfs, pred_colors = self.model(all_points)
+            rendered_color, rendered_depth = self.renderer.render(all_depths, pred_sdfs, pred_colors)
 
-            sampled_points = torch.tensor(np.stack(all_pts), dtype=torch.float32, device=self.device)
-            sampled_depths = torch.tensor(np.stack(all_depths), dtype=torch.float32, device=self.device)
-            target_depths = torch.tensor(np.stack(all_end_depths), dtype=torch.float32, device=self.device)
-
-            _, pred_sdfs, pred_colors = self.model(sampled_points)
-            rendered_color, rendered_depth = self.renderer.render(sampled_depths, pred_sdfs, pred_colors)
-
-            loss = total_loss(rendered_color, target_rgb, rendered_depth,
-                              sampled_depths, target_depths.unsqueeze(-1), pred_sdfs)
-
+            loss = total_loss(rendered_color, rgb_values, rendered_depth,
+                             all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
             loss.backward()
             self.optimizer.step()
 
+
         final_pose = (se3_to_SE3(self.delta_se3) @ pred_pose).detach().clone()  # torch [4,4]
 
-        # 更新 last/prev pose
-        self.prev_pose = self.last_pose
-        self.last_pose = final_pose
 
         return final_pose, loss.item()
 

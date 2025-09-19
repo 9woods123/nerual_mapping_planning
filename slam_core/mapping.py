@@ -20,6 +20,7 @@ class Mapper:
 
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = model
+
         self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
 
         self.optimizer = torch.optim.Adam([
@@ -36,15 +37,21 @@ class Mapper:
 
 
     def update_map(self, color, depth, camera_pose, is_frist_frame=False):
+        # print("DEBUG: tracker object id:", id(self))
+        # print("DEBUG: model id:", id(self.model))
+        # print("DEBUG: model param example id:", id(next(self.model.parameters())))
 
-        loss_val = 0.0
+
+        self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
+
         iteration_number=0
 
         if is_frist_frame :
-            iteration_number=3*self.iters
+            iteration_number=2*self.iters
         else:
             iteration_number=self.iters
 
+        
         
         for i in range(iteration_number):
             self.optimizer.zero_grad()
@@ -68,5 +75,8 @@ class Mapper:
             self.optimizer.step()
 
 
-        return loss_val
+        joint_optim_pose = (se3_to_SE3(self.delta_se3) @ camera_pose.detach()).detach().clone()
+
+        return loss.item(),joint_optim_pose
+
 

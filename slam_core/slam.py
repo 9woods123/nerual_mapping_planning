@@ -64,21 +64,31 @@ class SLAM:
         )
 
         self.mesher_resolution = self.params.mapping.resolution
-        self.mesh_every = 1
+        self.mesh_every = 10
 
         self.keyframes = []
 
 
         self.is_first_frame=True
 
+        self.last_pose = None
+        self.prev_pose = None
 
 
     def main_loop(self, color, depth, index,mesh_output_dir="./"):
             
             timestamp = time.time()  # 当前时间戳，单位秒
+            
 
             track_pose, _ = self.tracker.track(color, depth, self.is_first_frame)
-            loss = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
+            print("track_pose:",track_pose)
+
+            loss, joint_optim_pose = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
+            
+            self.tracker.update_last_pose(joint_optim_pose)
+
+            print("joint_optim_pose:",joint_optim_pose)
+
 
             # --- 保存 Keyframe ---
             self.keyframes.append(Keyframe(index, track_pose, depth, color, self.fx, self.fy, self.cx, self.cy, timestamp))
@@ -96,4 +106,5 @@ class SLAM:
             
 
             if self.is_first_frame: 
-                 self.is_first_frame==False
+
+                self.is_first_frame=False

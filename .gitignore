@@ -5,6 +5,9 @@
 
 yolo_venv/
 
+
+sensor_data/rgbd_dataset_freiburg1_360
+
 install/
 log/
 devel/

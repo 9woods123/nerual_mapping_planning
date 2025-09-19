@@ -68,6 +68,7 @@ class Mesher:
         # 2. 从 keyframe_dict 提取 c2w
         c2w_all = torch.stack([torch.tensor(kf.c2w, dtype=torch.float32, device=device) for kf in keyframe_dict], dim=0)  # (F,4,4)
 
+        print("c2w_all:",c2w_all)
         # 3. GPU 批量 frustum culling
         seen_mask, forecast_mask, _ = self.frustum_culler.split_points_frustum_multi(
             grid_points, c2w_all)
