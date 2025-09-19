@@ -1,10 +1,26 @@
 import numpy as np
+import torch
 
 class Keyframe:
     def __init__(self, timestamp, c2w, depth, color, fx=None, fy=None, cx=None, cy=None, frame_id=None):
-        self._c2w = np.array(c2w, dtype=np.float32)
-        self._depth = np.array(depth, dtype=np.float32)
-        self._color = np.array(color, dtype=np.float32)
+        # c2w
+        if isinstance(c2w, torch.Tensor):
+            self._c2w = c2w.detach().cpu()  # 保留为 tensor
+        else:
+            self._c2w = torch.tensor(c2w, dtype=torch.float32)
+
+        # depth
+        if isinstance(depth, torch.Tensor):
+            self._depth = depth.detach().cpu()
+        else:
+            self._depth = torch.tensor(depth, dtype=torch.float32)
+
+        # color
+        if isinstance(color, torch.Tensor):
+            self._color = color.detach().cpu()
+        else:
+            self._color = torch.tensor(color, dtype=torch.float32)
+
         self._fx = fx
         self._fy = fy
         self._cx = cx
@@ -14,21 +30,19 @@ class Keyframe:
 
     @property
     def c2w(self):
-        """相机位姿 (camera -> world)"""
-        return self._c2w.copy()  # 返回拷贝，避免外部修改内部状态
+        return self._c2w.clone()
 
     @property
     def w2c(self):
-        """世界 -> 相机"""
-        return np.linalg.inv(self._c2w)
+        return torch.inverse(self._c2w)
 
     @property
     def depth(self):
-        return self._depth.copy()
+        return self._depth.clone()
 
     @property
     def color(self):
-        return self._color.copy()
+        return self._color.clone()
 
     @property
     def fx(self):
@@ -53,4 +67,3 @@ class Keyframe:
     @property
     def timestamp(self):
         return self._timestamp
-

@@ -149,9 +149,6 @@ for epoch in range(num_epochs):
     target_depth = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
 
 
-    # sampled_rays_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_depths_tensor, 0, 10.0)
-    # sampled_rays_surface_depths_tensor, d_min_val, d_max_val = normalize_torch(sampled_rays_surface_depths_tensor, 0, 10.0)
-    # sampled_rays_points_tensor=sampled_rays_points_tensor/10.0
     pred_geo_features, pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(sampled_rays_points_tensor)
 
     # 使用 Renderer 类根据模型的输出进行最终渲染

@@ -56,7 +56,38 @@ def load_depth_image(image_path, factor=5000.0):
     return depth_image  # 返回深度图像
 
 
+def load_color_image_to_tensor(image_path, device="cuda"):
+    """
+    读取颜色图像并转换为 torch.Tensor，范围 [0,1]
+    :param image_path: 图像路径
+    :param device: torch device
+    :return: torch.Tensor, shape (H, W, 3), dtype=float32
+    """
+    color_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if color_image is None:
+        raise FileNotFoundError(f"无法读取图像文件: {image_path}")
 
+    color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+    color_image = color_image.astype(np.float32) / 255.0  # 归一化到 [0,1]
+    color_tensor = torch.from_numpy(color_image).to(device)
+    return color_tensor
+
+
+def load_depth_image_to_tensor(image_path, factor=5000.0, device="cuda"):
+    """
+    读取深度图并转换为 torch.Tensor，单位为米
+    :param image_path: 深度图路径
+    :param factor: 深度缩放因子
+    :param device: torch device
+    :return: torch.Tensor, shape (H, W), dtype=float32
+    """
+    depth_image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    if depth_image is None:
+        raise FileNotFoundError(f"无法读取深度图像文件: {image_path}")
+
+    depth_image = depth_image.astype(np.float32) / factor
+    depth_tensor = torch.from_numpy(depth_image).to(device)
+    return depth_tensor
 
 
 

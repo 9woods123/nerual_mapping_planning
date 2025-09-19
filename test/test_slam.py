@@ -20,10 +20,13 @@ class FrameLoader:
         color_file = os.path.join(self.color_dir, f"color_{idx}.png")
         depth_file = os.path.join(self.depth_dir, f"depth_{idx}.png")
 
-        color = load_color_image(color_file)
+        # color = load_color_image(color_file)
+        # depth = load_depth_image(depth_file)
 
-        depth = load_depth_image(depth_file)
-        return color, depth
+        color_tensor=load_color_image_to_tensor(color_file)
+        depth_tensor=load_depth_image_to_tensor(depth_file)
+
+        return color_tensor, depth_tensor
 
 
 

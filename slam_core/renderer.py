@@ -16,11 +16,9 @@ class Renderer:
         """
         
 
-
         weights = self.compute_weights(sdf_values)  # (N_rays, N_samples)
 
         weights_sum = torch.sum(weights, dim=1) + 1e-8  # 防止除零
-
 
         # [Render] depth_values shape: torch.Size([231, 20])
         # [Render] color_values shape: torch.Size([231, 20, 3])
@@ -28,7 +26,6 @@ class Renderer:
         # [Render] weights shape: torch.Size([231, 20, 1])
         # [Render] weights_sum shape: torch.Size([231, 1, 1])
         # [Render] weight_color shape: torch.Size([231, 3])
-
 
         weight_color=torch.sum(weights * color_values, dim=1)
         rendered_color = weight_color / weights_sum

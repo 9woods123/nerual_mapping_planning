@@ -43,6 +43,7 @@ class SLAM:
         self.tracker = Tracker(
             model=self.model,
             fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
+            width=self.width, height=self.height,
             truncation=self.params.mapping.truncation,
             lr=self.params.tracking.lr,
             iters=self.params.tracking.iters,
@@ -54,6 +55,7 @@ class SLAM:
         self.mapper = Mapper(
             model=self.model,
             fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
+            width=self.width, height=self.height,
             truncation=self.params.mapping.truncation,
             lr=self.params.mapping.lr,
             iters=self.params.mapping.iters,
@@ -69,17 +71,14 @@ class SLAM:
 
         self.is_first_frame=True
 
+
+
     def main_loop(self, color, depth, index,mesh_output_dir="./"):
             
             timestamp = time.time()  # 当前时间戳，单位秒
-            
-            if self.is_first_frame:
-                track_pose=np.eye(4, dtype=np.float32)
-                loss = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
-            else:
-                track_pose, _ = self.tracker.track(color, depth)
-                loss = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
-            
+
+            track_pose, _ = self.tracker.track(color, depth, self.is_first_frame)
+            loss = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
 
             # --- 保存 Keyframe ---
             self.keyframes.append(Keyframe(index, track_pose, depth, color, self.fx, self.fy, self.cx, self.cy, timestamp))
@@ -94,4 +93,7 @@ class SLAM:
                     save_path=f"{mesh_output_dir}/mesh_{index}.ply",
                     device=self.device
                 )
+            
 
+            if self.is_first_frame: 
+                 self.is_first_frame==False
