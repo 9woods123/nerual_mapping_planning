@@ -30,7 +30,7 @@ def select_window(keyframes, window_size):
         return historical_kfs + [latest_kf]
 
 class Mapper:
-    def __init__(self, model, fx, fy, cx, cy,  width, height, truncation=0.1, lr=1e-3, track_lr=1e-2, iters=100,downsample_ratio=0.001, device="cuda"):
+    def __init__(self, model, fx, fy, cx, cy,  width, height, truncation=0.1, lr=1e-3, track_lr=1e-3, iters=100,downsample_ratio=0.001, device="cuda"):
 
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = model
@@ -40,8 +40,6 @@ class Mapper:
         self.delta_se3s = nn.ParameterList([
             nn.Parameter(torch.zeros(6, device=self.device),requires_grad=True) for _ in range(max_window_size)
         ])
-
-
 
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": lr},
@@ -66,7 +64,7 @@ class Mapper:
         iteration_number=0
 
         if is_first_frame :
-            iteration_number=2*self.iters
+            iteration_number=10*self.iters
         else:
             iteration_number=self.iters
 

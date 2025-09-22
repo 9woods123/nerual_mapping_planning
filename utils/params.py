@@ -10,6 +10,7 @@ from typing import Optional
 import yaml
 import os
 
+
 # ---------------- 默认参数 ----------------
 camera_params = {
     "fx": 525.0,
@@ -24,6 +25,7 @@ camera_params = {
 }
 
 
+
 bounding_box ={
     "min_x": -5.0,
     "max_x": 5.0,
@@ -34,22 +36,24 @@ bounding_box ={
 }
 
 
+
 mapping_params = {
     "truncation": 0.1,
     "resolution": 0.01,
     "batch_size": 65536,
     "lr": 1e-3,         # Mapper 学习率
-    "iters": 75,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.0001,  # 对输入图像下采样比例
+    "iters": 50,       # Mapper 内部优化迭代次数
+    "downsample_ratio": 0.005,  # 对输入图像下采样比例
 }
 
 
 tracking_params = {
-    "lr": 1e-2,           # 优化位姿学习率
-    "iters": 40,          # 位姿优化迭代次数
-    "n_samples": 35,      # 每条射线采样点数
-    "downsample_ratio": 0.0001,  # 对输入图像下采样比例
+    "lr": 1e-3,           # 优化位姿学习率
+    "iters": 50,          # 位姿优化迭代次数
+    "n_samples": 50,      # 每条射线采样点数
+    "downsample_ratio": 0.005,  # 对输入图像下采样比例
 }
+
 
 model_params = {
     "input_dim": 3,

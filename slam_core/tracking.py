@@ -50,10 +50,11 @@ class Tracker:
             self.prev_pose=self.last_pose
             return self.last_pose
 
-        # 相对运动 (torch)
         
-        relative_motion = torch.linalg.inv(self.prev_pose) @ self.last_pose
-        return self.last_pose @ relative_motion
+        return self.last_pose 
+
+        # relative_motion = torch.linalg.inv(self.prev_pose) @ self.last_pose
+        # return self.last_pose @ relative_motion
 
 
     def record_pose(self, last_pose, prev_pose):
@@ -71,7 +72,7 @@ class Tracker:
 
         # === 初始化位姿 ===
         pred_pose = self.predict_pose()  # torch [4,4]
-        
+
         if is_first_frame:
             return 0, pred_pose
 

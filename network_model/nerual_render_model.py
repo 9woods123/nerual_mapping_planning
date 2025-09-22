@@ -203,7 +203,6 @@ class SimpleMLPModel(nn.Module):
         )
 
 
-
     def forward(self, x):
 
         x_pe = self.pe(x)
