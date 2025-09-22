@@ -58,6 +58,7 @@ class SLAM:
             width=self.width, height=self.height,
             truncation=self.params.mapping.truncation,
             lr=self.params.mapping.lr,
+            track_lr=self.params.tracking.lr,
             iters=self.params.mapping.iters,
             downsample_ratio=self.params.mapping.downsample_ratio,
             device=self.device
@@ -68,6 +69,7 @@ class SLAM:
 
         self.keyframes = []
 
+        self.keyframe_every=5
 
         self.is_first_frame=True
 
@@ -76,35 +78,39 @@ class SLAM:
         self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution)
 
 
-    def main_loop(self, color, depth, index,mesh_output_dir="./"):
-            
-            timestamp = time.time()  # 当前时间戳，单位秒
-            
+    def main_loop(self, color, depth, index, mesh_output_dir="./"):
+        timestamp = time.time()
 
-            track_pose, track_loss = self.tracker.track(color, depth, self.is_first_frame)
-            print("track_pose:",track_pose)
-            
-            map_loss, joint_optim_pose = self.mapper.update_map(color, depth, track_pose, self.is_first_frame)
-            self.tracker.update_last_pose(joint_optim_pose)
+        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame)
 
-            print(" ",index,"   Track Loss:",track_loss, " Map Loss:",map_loss )
+        # --- 关键帧策略 ---
+        if self.is_first_frame or index % self.keyframe_every == 0:
+            # 保存关键帧
+            self.keyframes.append(
+                Keyframe(index, track_pose, depth, color,
+                        self.fx, self.fy, self.cx, self.cy, timestamp)
+                        )
 
-            if index % self.mesh_every == 0:
-                # --- 保存 Keyframe ---
-                self.keyframes.append(Keyframe(index, track_pose, depth, color, self.fx, self.fy, self.cx, self.cy, timestamp))
+        # --- 使用关键帧集合更新地图 ---
+        map_loss, joint_opt_pose_latest = self.mapper.update_map(
+            keyframes=self.keyframes,
+            is_first_frame=self.is_first_frame
+        )
 
+        self.tracker.update_last_pose(joint_opt_pose_latest)
 
-            # --- 每隔 mesh_every 帧生成一次点云 ---
-            if index % self.mesh_every == 0:
-                self.mesher.generate_surface_pointcloud(
-                    query_fn=self.mapper.renderer.query_sdf_color_function,
-                    keyframe_dict=self.keyframes,
-                    batch_size=65536,
-                    save_path=f"{mesh_output_dir}/mesh_{index}.ply",
-                    device=self.device
-                )
-            
+        print(" ", index, "   Track Loss:", track_loss, " Map Loss:", map_loss)
 
-            if self.is_first_frame: 
-                self.is_first_frame=False
+        # --- 每隔 mesh_every 帧生成点云 ---
+        if index % self.mesh_every == 0:
+            self.mesher.generate_surface_pointcloud(
+                query_fn=self.mapper.renderer.query_sdf_color_function,
+                keyframe_dict=self.keyframes,
+                batch_size=65536,
+                save_path=f"{mesh_output_dir}/mesh_{index}.ply",
+                device=self.device
+            )
+
+        if self.is_first_frame:
+            self.is_first_frame = False
 

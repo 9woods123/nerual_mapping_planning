@@ -2,24 +2,27 @@ import numpy as np
 import torch
 
 class Keyframe:
-    def __init__(self, timestamp, c2w, depth, color, fx=None, fy=None, cx=None, cy=None, frame_id=None):
+    def __init__(self, timestamp, c2w, depth, color, fx=None, fy=None, cx=None, cy=None, frame_id=None, device='cuda'):
+
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+
         # c2w
         if isinstance(c2w, torch.Tensor):
-            self._c2w = c2w.detach().cpu()  # 保留为 tensor
+            self._c2w = c2w.detach().to(self.device)
         else:
-            self._c2w = torch.tensor(c2w, dtype=torch.float32)
+            self._c2w = torch.tensor(c2w, dtype=torch.float32, device=self.device)
 
         # depth
         if isinstance(depth, torch.Tensor):
-            self._depth = depth.detach().cpu()
+            self._depth = depth.detach().to(self.device)
         else:
-            self._depth = torch.tensor(depth, dtype=torch.float32)
+            self._depth = torch.tensor(depth, dtype=torch.float32, device=self.device)
 
         # color
         if isinstance(color, torch.Tensor):
-            self._color = color.detach().cpu()
+            self._color = color.detach().to(self.device)
         else:
-            self._color = torch.tensor(color, dtype=torch.float32)
+            self._color = torch.tensor(color, dtype=torch.float32, device=self.device)
 
         self._fx = fx
         self._fy = fy

@@ -1,32 +1,27 @@
 import torch
 
-# 模拟输入
-surface_depths_tensor = torch.arange(5).reshape(5, 1)   # [5,1], 值是 [[0],[1],[2],[3],[4]]
-observe_depth = torch.tensor([
-    [0.1, 0.2, 0.3, 0.4, 0.5],
-    [1.0, 1.1, 1.2, 1.3, 1.4],
-    [2.0, 2.1, 2.2, 2.3, 2.4],
-    [3.0, 3.1, 3.2, 3.3, 3.4],
-    [4.0, 4.1, 4.2, 4.3, 4.4]
-])  # [5,5]
+# 假设 delta_se3 是要优化的变量
+delta = torch.nn.Parameter(torch.ones(1, requires_grad=True))
 
-print("surface_depths_tensor:\n", surface_depths_tensor)
-print("observe_depth:\n", observe_depth)
+# 假设 keyframe 的 c2w（其实就是某个 pose），不是 optimizer 的参数
+kf_c2w = torch.tensor([2.0], requires_grad=True)
 
-# expand 把 [5,1] 广播成 [5,5]
-expanded_surface = surface_depths_tensor.expand_as(observe_depth)
+# Optimizer 只管 delta
+opt = torch.optim.SGD([delta], lr=0.1)
 
-print("\nexpanded_surface:\n", expanded_surface)
-
-# 做差值
-diff = observe_depth - expanded_surface
-
-print("\ndiff:\n", diff)
+for step in range(111):
+    opt.zero_grad()
+    
+    # --------------------------
+    # 两种情况对比
+    # --------------------------
+    pose1 = delta * kf_c2w           # 不 detach
+    
+    loss1 = (pose1 - 10).pow(2)   # 假装 loss
 
 
+    # 分别 backward
+    loss1.backward()  
+    opt.step()
 
-A = torch.randn(10, 3, 4)   # 10个 (3x4) 矩阵
-B = torch.randn(10, 4, 5)   # 10个 (4x5) 矩阵
-
-C = torch.bmm(A, B)         # 结果是 10个 (3x5) 矩阵
-print(C.shape)              # torch.Size([10, 3, 5])
+    print("kf_c2w:",kf_c2w)

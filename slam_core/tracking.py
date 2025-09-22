@@ -71,9 +71,9 @@ class Tracker:
 
         # === 初始化位姿 ===
         pred_pose = self.predict_pose()  # torch [4,4]
-        print("pred_pose:",pred_pose)
+        
         if is_first_frame:
-            return pred_pose, 0
+            return 0, pred_pose
 
 
         with torch.no_grad():
@@ -99,8 +99,8 @@ class Tracker:
             self.optimizer.step()
    
         
-        final_pose = (se3_to_SE3(self.delta_se3) @ pred_pose).detach().clone()  # torch [4,4]
+        final_pose = (se3_to_SE3(self.delta_se3) @ pred_pose).clone().detach()  # torch [4,4]
 
 
-        return final_pose, loss.item()
+        return loss.item(),final_pose
 
