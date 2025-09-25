@@ -65,7 +65,7 @@ class SLAM:
         )
 
         self.mesher_resolution = self.params.mapping.resolution
-        self.mesh_every = 10
+        self.mesh_every = 100
 
         self.keyframes = []
 
@@ -78,11 +78,13 @@ class SLAM:
         self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution)
 
 
+
     def main_loop(self, color, depth, index, mesh_output_dir="./"):
         timestamp = time.time()
 
         track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame)
 
+        map_loss = 0
         # --- 关键帧策略 ---
         if self.is_first_frame or index % self.keyframe_every == 0:
             # 保存关键帧
@@ -90,14 +92,16 @@ class SLAM:
                 Keyframe(index, track_pose, depth, color,
                         self.fx, self.fy, self.cx, self.cy, timestamp)
                         )
+            
+                        # --- 使用关键帧集合更新地图 ---
+            map_loss, joint_opt_pose_latest = self.mapper.update_map(
+                keyframes=self.keyframes,
+                is_first_frame=self.is_first_frame
+            )
 
-        # --- 使用关键帧集合更新地图 ---
-        map_loss, joint_opt_pose_latest = self.mapper.update_map(
-            keyframes=self.keyframes,
-            is_first_frame=self.is_first_frame
-        )
+            self.tracker.update_last_pose(joint_opt_pose_latest)
 
-        self.tracker.update_last_pose(joint_opt_pose_latest)
+
 
         print(" ", index, "   Track Loss:", track_loss, " Map Loss:", map_loss)
 

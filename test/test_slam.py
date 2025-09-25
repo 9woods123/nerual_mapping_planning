@@ -35,7 +35,7 @@ frame_loader = FrameLoader("sensor_data/rgbd_dataset_freiburg1_360/rgb_renamed",
 default_params=Params()
 slam = SLAM(default_params)
 
-num_frames = 100
+num_frames = 900
 for i in range(num_frames):
     color, depth = frame_loader.load_frame(i+1)
     slam.main_loop(color, depth, i+1, mesh_output_dir="./meshes")
