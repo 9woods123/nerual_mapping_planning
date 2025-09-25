@@ -64,7 +64,7 @@ class Mapper:
         iteration_number=0
 
         if is_first_frame :
-            iteration_number=10*self.iters
+            iteration_number=5*self.iters
         else:
             iteration_number=self.iters
 
@@ -75,13 +75,10 @@ class Mapper:
 
             BA_loss=0
 
-            kf_init_c2w = used_keyframes[-1].c2w.detach()
-
             for j, kf in enumerate(used_keyframes):
-                
-                # 增量应用到初始位姿
 
-                pose_mat = se3_to_SE3(self.delta_se3s[j]) @ kf_init_c2w
+                # 增量应用到初始位姿
+                pose_mat = se3_to_SE3(self.delta_se3s[j]) @ kf.c2w
 
                 # 射线采样
                 rays_3d, rgb_values, depths = self.ray_casting.cast_rays(kf.depth, kf.color, pose_mat,self.height, self.width)

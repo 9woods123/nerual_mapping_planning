@@ -10,9 +10,7 @@ def color_loss(pred_rgb, gt_rgb):
     """
     计算颜色损失：用于评估预测的 RGB 和真实 RGB 之间的差异
     """
-    # print("[color_loss] pred_rgb :", pred_rgb[:].squeeze().detach().cpu().numpy())
-    # print("[color_loss] gt_rgb   :", gt_rgb[:].squeeze().detach().cpu().numpy())
-
+ 
     return torch.mean((pred_rgb - gt_rgb)**2)
 
 
@@ -22,11 +20,6 @@ def depth_loss(pred_depth, gt_depth):
     """
 
     loss = torch.mean((pred_depth - gt_depth) ** 2)
-
-    # 打印前几个值看看
-    # print("[depth_loss] pred_depth (first 5):", pred_depth[:].squeeze().detach().cpu().numpy())
-    # print("[depth_loss] gt_depth   (first 5):", gt_depth[:].squeeze().detach().cpu().numpy())
-    # print("[depth_loss] loss:", loss.item())
 
     return loss
 
@@ -48,14 +41,6 @@ def free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth, truncation=
 
     surface_depths_broadcast = surface_depths_tensor.expand_as(observe_depth)
     mask = ((surface_depths_broadcast - observe_depth )> truncation/scale)
-
-    # print("================================[Free Loss Debug]================================")
-    # print("surface_depths_broadcast shape:", surface_depths_broadcast.shape)
-    # print("observe_depth shape:", observe_depth.shape)
-    # print("pred_sdfs shape:", pred_sdfs.shape)
-    # print("mask True count:", mask.sum().item(), "/", mask.numel())
-    # print("pred_sdfs[:] (all):", pred_sdfs.detach().cpu().numpy())
-    # print("mask[:] (all):", mask.detach().cpu().numpy())
 
 
     if mask.any():
@@ -81,26 +66,7 @@ def sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor, truncation
     D_diff = torch.abs(surface_depths_broadcast - observe_depth)
     mask = (D_diff <= truncation / scale)
 
-    # 基本信息总是打印
-    # print("================================[Surface Loss Debug]================================")
-    # print("surface_depths_broadcast shape:", surface_depths_broadcast.shape)
-    # print("observe_depth shape:", observe_depth.shape)
-    # print("pred_sdfs shape:", pred_sdfs.shape)
 
-    # print("mask True count:", mask.sum().item(), "/", mask.numel())
-
-    # print("surface_depths_broadcast (all):", surface_depths_broadcast.detach().cpu().numpy())
-    # print("observe_depth (all):", observe_depth.detach().cpu().numpy())
-    # print("D_diff (all):", D_diff.detach().cpu().numpy())
-    # print("mask (all):", mask.detach().cpu().numpy())
-
-    # print("surface_depths_broadcast[mask] (all):", surface_depths_broadcast[mask].detach().cpu().numpy())
-    # print(" observe_depth[mask] (all):", observe_depth[mask].detach().cpu().numpy())
-    # print(" pred_sdfs (all):", pred_sdfs.detach().cpu().numpy())
-
-
-
-    # print("================================================================================")
 
     if mask.any():
         
@@ -109,23 +75,13 @@ def sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor, truncation
 
         gt_sdf = gt_sdf / truncation
 
-        # print("before  gt_sdf (all):", gt_sdf.detach().cpu().numpy())
 
         gt_sdf = gt_sdf.unsqueeze(-1)  # shape [N_mask,1]
 
         diff = pred_sdfs[mask].view(-1,1) - gt_sdf
 
-        # print("================================[Mask Values]================================")
-        # print("gt_sdf (all):", gt_sdf.detach().cpu().numpy())
-        # print("diff (all):", diff.detach().cpu().numpy())
-        # print("================================================================================")
-
         loss_surface = (diff ** 2).mean()
 
-
-        # print("pred_sdfs (first 10):", pred_sdfs[mask][:].detach().cpu().numpy())
-        # print("loss_surface:", loss_surface.item())
-        # print("===================================================================================")
 
         return loss_surface
     else:
