@@ -101,9 +101,12 @@ class Mapper:
             self.optimizer.step()
 
 
+
+        with torch.no_grad():
             # 优化完成后，把 delta_se3s 应用到关键帧的 c2w
-        for j, kf in enumerate(used_keyframes):
-            kf._c2w = (se3_to_SE3(self.delta_se3s[j]) @ kf.c2w.to(self.device)).detach().clone()
+            for j, kf in enumerate(used_keyframes):
+                kf._c2w = (se3_to_SE3(self.delta_se3s[j]) @ kf.c2w.to(self.device)).detach().clone()
+
 
         # 最新帧位姿
         joint_opt_pose_latest = (se3_to_SE3(self.delta_se3s[-1]) @ 

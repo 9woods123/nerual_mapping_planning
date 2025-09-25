@@ -42,16 +42,16 @@ mapping_params = {
     "resolution": 0.01,
     "batch_size": 65536,
     "lr": 1e-3,         # Mapper 学习率
-    "iters": 50,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.0005,  # 对输入图像下采样比例
+    "iters": 100,       # Mapper 内部优化迭代次数
+    "downsample_ratio": 0.00025,  # 对输入图像下采样比例
 }
 
 
 tracking_params = {
-    "lr": 0.01,           # 优化位姿学习率
-    "iters": 50,          # 位姿优化迭代次数
+    "lr": 0.001,           # 优化位姿学习率
+    "iters": 100,          # 位姿优化迭代次数
     "n_samples": 50,      # 每条射线采样点数
-    "downsample_ratio": 0.0005,  # 对输入图像下采样比例
+    "downsample_ratio": 0.001,  # 对输入图像下采样比例
 }
 
 
@@ -115,7 +115,3 @@ class Params:
     def __getattr__(self, item):
         return getattr(self._ns, item)
 
-
-# ============ 导出全局 params ============
-# 可以选择传入 YAML 文件
-# params = Params("config.yaml")  # 使用 YAML 覆盖默认参数
