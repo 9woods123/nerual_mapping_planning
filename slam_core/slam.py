@@ -69,7 +69,7 @@ class SLAM:
 
         self.keyframes = []
 
-        self.keyframe_every=3
+        self.keyframe_every=5
 
         self.is_first_frame=True
 

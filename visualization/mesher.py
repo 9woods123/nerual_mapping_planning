@@ -78,6 +78,8 @@ class Mesher:
         sdf_values, color_values = [], []
         pts_tensor = grid_seen
 
+        pts_tensor=pts_tensor/10.0
+        
         for start in range(0, pts_tensor.shape[0], batch_size):
             end = start + batch_size
             sdf_batch, color_batch = query_fn(pts_tensor[start:end])
@@ -89,6 +91,7 @@ class Mesher:
 
         # 5. 筛选表面点
         mask = np.abs(sdf_values) < 0.1
+        
         surface_points = grid_seen.cpu().numpy()[mask.squeeze()]
         surface_colors = color_values[mask.squeeze()]
 

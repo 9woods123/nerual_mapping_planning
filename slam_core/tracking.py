@@ -93,6 +93,8 @@ class Tracker:
                 rays_direction_list=rays_3d,
                 depths_list=depths
             )
+            
+            all_points=all_points/10.0
 
             _, pred_sdfs, pred_colors = self.model(all_points)
             rendered_color, rendered_depth = self.renderer.render(all_depths, pred_sdfs, pred_colors)
