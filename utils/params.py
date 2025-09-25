@@ -43,7 +43,7 @@ mapping_params = {
     "batch_size": 65536,
     "lr": 1e-3,         # Mapper 学习率
     "iters": 20,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.005,  # 对输入图像下采样比例
+    "downsample_ratio": 0.002,  # 对输入图像下采样比例
 }
 
 

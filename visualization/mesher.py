@@ -78,8 +78,6 @@ class Mesher:
         sdf_values, color_values = [], []
         pts_tensor = grid_seen
 
-        pts_tensor=pts_tensor/10.0
-        
         for start in range(0, pts_tensor.shape[0], batch_size):
             end = start + batch_size
             sdf_batch, color_batch = query_fn(pts_tensor[start:end])

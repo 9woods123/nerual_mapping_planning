@@ -65,7 +65,7 @@ class SLAM:
         )
 
         self.mesher_resolution = self.params.mapping.resolution
-        self.mesh_every = 100
+        self.mesh_every = 50
 
         self.keyframes = []
 
