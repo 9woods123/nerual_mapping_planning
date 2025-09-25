@@ -80,17 +80,20 @@ class Tracker:
         with torch.no_grad():
             self.delta_se3.zero_()  # 将 tensor 所有元素置0
 
+
+
+
         for _ in range(self.iters):
             self.optimizer.zero_grad()
 
             pose_mat =  se3_to_SE3(self.delta_se3) @ pred_pose   # torch [4,4]
-
             rays_3d, rgb_values, depths = self.ray_casting.cast_rays(depth, color, pose_mat,self.height, self.width)
             all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
                 ray_origin=pose_mat[:3, 3],
                 rays_direction_list=rays_3d,
                 depths_list=depths
             )
+
             _, pred_sdfs, pred_colors = self.model(all_points)
             rendered_color, rendered_depth = self.renderer.render(all_depths, pred_sdfs, pred_colors)
 
