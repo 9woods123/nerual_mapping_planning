@@ -7,6 +7,11 @@ yolo_venv/
 
 
 sensor_data/rgbd_dataset_freiburg1_360
+sensor_data/rgbd_dataset_freiburg2_360_hemisphere
+sensor_data/rgbd_dataset_freiburg1_xyz
+
+mlp_results/
+
 
 install/
 log/

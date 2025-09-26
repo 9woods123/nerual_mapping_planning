@@ -204,6 +204,9 @@ class SimpleMLPModel(nn.Module):
 
 
     def forward(self, x):
+        
+        ## normlize to [-1,1]
+        x=x/10.0
 
         x_pe = self.pe(x)
         features = self.mlp_block(x_pe)

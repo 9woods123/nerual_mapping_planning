@@ -11,6 +11,8 @@ def rename_and_show(txt_file, dst_folder, window_name="Image"):
     # 跳过注释行
     files = [line.strip().split()[1] for line in lines if not line.startswith("#")]
 
+    
+
     # 创建重命名后的文件夹
     os.makedirs(dst_folder, exist_ok=True)
 

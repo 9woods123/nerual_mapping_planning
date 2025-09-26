@@ -13,7 +13,10 @@ import threading
 
 
 class Mesher:
-    def __init__(self, min_x, min_y, min_z, max_x, max_y, max_z, fx, fy, cx, cy, width, height, resolution=0.01):
+    def __init__(self, min_x, min_y, min_z, max_x, max_y, max_z, fx, fy, cx, cy, width, height, resolution=0.01 ,
+                 near=0.2,
+                 far=2.5              
+                 ):
         """
         Mesher 类，用于根据场景表示生成网格点并分类
         
@@ -23,7 +26,9 @@ class Mesher:
         """
         self.resolution = resolution
         self.bound = [min_x, min_y, min_z, max_x, max_y, max_z]  
-        self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height)
+
+
+        self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height, near, far)
         
     
     def generate_grid_points(self, device='cpu'):

@@ -19,7 +19,7 @@ camera_params = {
     "cy": 239.5,
     "width": 640,
     "height": 480,
-    "near": 0.1,
+    "near": 0.2,
     "far": 2.5,
     "forecast_margin": 0.25,
 }
@@ -42,16 +42,16 @@ mapping_params = {
     "resolution": 0.01,
     "batch_size": 65536,
     "lr": 1e-3,         # Mapper 学习率
-    "iters": 20,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.002,  # 对输入图像下采样比例
+    "iters": 200,       # Mapper 内部优化迭代次数
+    "downsample_ratio": 0.0001,  # 对输入图像下采样比例
 }
 
 
 tracking_params = {
-    "lr": 0.01,           # 优化位姿学习率
-    "iters": 25,          # 位姿优化迭代次数
+    "lr": 0.002,           # 优化位姿学习率
+    "iters": 40,          # 位姿优化迭代次数
     "n_samples": 50,      # 每条射线采样点数
-    "downsample_ratio": 0.001,  # 对输入图像下采样比例
+    "downsample_ratio": 0.0001,  # 对输入图像下采样比例
 }
 
 

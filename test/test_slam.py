@@ -29,8 +29,12 @@ class FrameLoader:
 
 
 
-frame_loader = FrameLoader("sensor_data/rgbd_dataset_freiburg1_360/rgb_renamed",
-                          "sensor_data/rgbd_dataset_freiburg1_360/depth_renamed")
+# frame_loader = FrameLoader("sensor_data/rgbd_dataset_freiburg1_360/rgb_renamed",
+#                           "sensor_data/rgbd_dataset_freiburg1_360/depth_renamed")
+
+frame_loader = FrameLoader("sensor_data/rgbd_dataset_freiburg1_xyz/rgb_renamed",
+                          "sensor_data/rgbd_dataset_freiburg1_xyz/depth_renamed")
+
 
 default_params=Params()
 slam = SLAM(default_params)

@@ -11,8 +11,7 @@ import torch
 
 
 class FrustumCulling:
-    def __init__(self, fx, fy, cx, cy, width, height, device='cuda',
-                 near=0.1, far=2.5, forecast_margin=0.15):
+    def __init__(self, fx, fy, cx, cy, width, height, near=0.1, far=2.5, forecast_margin=0.15, device='cuda'):
         self.fx = fx
         self.fy = fy
         self.cx = cx

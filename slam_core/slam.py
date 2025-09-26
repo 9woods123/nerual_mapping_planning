@@ -75,14 +75,16 @@ class SLAM:
 
         self.last_pose = None
         self.prev_pose = None
-        self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution)
+        self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution,
+                              self.params.camera.near, 
+                              self.params.camera.far)
 
 
 
     def main_loop(self, color, depth, index, mesh_output_dir="./"):
         timestamp = time.time()
 
-        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame)
+        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
 
         map_loss = 0
         # --- 关键帧策略 ---
@@ -96,7 +98,8 @@ class SLAM:
                         # --- 使用关键帧集合更新地图 ---
             map_loss, joint_opt_pose_latest = self.mapper.update_map(
                 keyframes=self.keyframes,
-                is_first_frame=self.is_first_frame
+                is_first_frame=self.is_first_frame,
+                index=index
             )
 
             self.tracker.update_last_pose(joint_opt_pose_latest)

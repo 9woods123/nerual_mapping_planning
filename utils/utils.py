@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import cv2
 
-
-
+import matplotlib.pyplot as plt
+import os
 
 
 
@@ -89,6 +89,24 @@ def load_depth_image_to_tensor(image_path, factor=5000.0, device="cuda"):
     depth_tensor = torch.from_numpy(depth_image).to(device)
     return depth_tensor
 
+def save_loss_curve(losses, index, save_dir):
+    """
+    保存单帧的 loss 曲线图
+    :param losses: list[float] 每次迭代的 loss
+    :param index: int 帧编号
+    :param save_dir: str 保存目录（绝对路径）
+    """
+    os.makedirs(save_dir, exist_ok=True)  # 确保目录存在
+    save_path = os.path.join(save_dir, f"loss_curve_{index:04d}.png")
+
+    plt.figure()
+    plt.plot(losses, marker='o', linewidth=1)
+    plt.title(f"Track Loss Curve (frame {index})")
+    plt.xlabel("Iteration")
+    plt.ylabel("Loss")
+    plt.grid(True)
+    plt.savefig(save_path)
+    plt.close()
 
 
 

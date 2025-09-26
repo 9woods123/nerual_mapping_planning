@@ -14,7 +14,7 @@ from slam_core.renderer import Renderer
 from network_model.loss_calculate import total_loss
 from slam_core.se3_utils import se3_to_SE3
 import random
-
+from utils.utils import save_loss_curve
 
 def select_window(keyframes, window_size):
 
@@ -55,7 +55,7 @@ class Mapper:
         self.height=height
 
 
-    def update_map(self, keyframes, is_first_frame=False, window_size=10):
+    def update_map(self, keyframes, is_first_frame, index, window_size=10):
 
         with torch.no_grad():
             for delta in self.delta_se3s:  # 多关键帧
@@ -70,6 +70,10 @@ class Mapper:
 
         used_keyframes = select_window(keyframes, window_size)
         
+
+        ba_losses=[]
+        BA_loss=0
+
         for i in range(iteration_number):
             self.optimizer.zero_grad()
 
@@ -98,6 +102,8 @@ class Mapper:
             
 
             BA_loss.backward()
+            ba_losses.append(BA_loss.item())
+
             self.optimizer.step()
 
 
@@ -112,6 +118,8 @@ class Mapper:
         joint_opt_pose_latest = (se3_to_SE3(self.delta_se3s[-1]) @ 
                                 used_keyframes[-1].c2w.to(self.device)).detach().clone()
         
+        save_loss_curve(ba_losses, index, "./mlp_results/mapping_loss")
 
-        return loss.item(),joint_opt_pose_latest
+
+        return BA_loss.item(),joint_opt_pose_latest
 
