@@ -9,6 +9,7 @@ yolo_venv/
 sensor_data/rgbd_dataset_freiburg1_360
 sensor_data/rgbd_dataset_freiburg2_360_hemisphere
 sensor_data/rgbd_dataset_freiburg1_xyz
+sensor_data/rgbd_dataset_freiburg1_plant_secret
 
 mlp_results/
 
