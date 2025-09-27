@@ -30,7 +30,8 @@ class Mesher:
 
         self.frustum_culler= FrustumCulling(fx, fy, cx, cy, width, height, near, far)
         
-    
+        # self.vis = o3d.visualization.Visualizer()
+
     def generate_grid_points(self, device='cpu'):
         """
         根据边界和分辨率生成网格点

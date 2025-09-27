@@ -30,7 +30,7 @@ def select_window(keyframes, window_size):
         return historical_kfs + [latest_kf]
 
 class Mapper:
-    def __init__(self, model, fx, fy, cx, cy,  width, height, truncation=0.1, lr=1e-3, track_lr=1e-3, iters=100,downsample_ratio=0.001, device="cuda"):
+    def __init__(self, model, fx, fy, cx, cy,  width, height,distortion,truncation=0.1, lr=1e-3, track_lr=1e-3, iters=100,downsample_ratio=0.001, device="cuda"):
 
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = model
@@ -48,7 +48,14 @@ class Mapper:
 
 
         self.renderer = Renderer(self.model, truncation)
-        self.ray_casting = RayCasting(np.array([[fx, 0, cx],[0, fy, cy],[0,0,1]]),sample_ratio=downsample_ratio)
+        self.ray_casting = RayCasting(
+            np.array([[fx, 0, cx],
+                      [0, fy, cy],
+                      [0, 0, 1]]),
+                      distortion,
+            sample_ratio=downsample_ratio
+        )        
+        
         self.iters=iters
         
         self.width=width
@@ -100,6 +107,7 @@ class Mapper:
                 
                 BA_loss+=loss
             
+            BA_loss=BA_loss/len(used_keyframes)  ## normlize
 
             BA_loss.backward()
             ba_losses.append(BA_loss.item())

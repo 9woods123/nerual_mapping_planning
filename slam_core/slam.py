@@ -30,6 +30,7 @@ class SLAM:
         self.cy = self.params.camera.cy
         self.height=self.params.camera.height
         self.width=self.params.camera.width
+        self.distortion_params=self.params.camera.distortion
 
         self.device = device
 
@@ -44,6 +45,7 @@ class SLAM:
             model=self.model,
             fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
             width=self.width, height=self.height,
+            distortion=self.distortion_params,
             truncation=self.params.mapping.truncation,
             lr=self.params.tracking.lr,
             iters=self.params.tracking.iters,
@@ -56,6 +58,7 @@ class SLAM:
             model=self.model,
             fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
             width=self.width, height=self.height,
+            distortion=self.distortion_params,
             truncation=self.params.mapping.truncation,
             lr=self.params.mapping.lr,
             track_lr=self.params.tracking.lr,
@@ -65,11 +68,12 @@ class SLAM:
         )
 
         self.mesher_resolution = self.params.mapping.resolution
-        self.mesh_every = 250
+        
+        self.mesh_every = self.params.mapping.mesh_every
 
         self.keyframes = []
 
-        self.keyframe_every=5
+        self.keyframe_every=7
 
         self.is_first_frame=True
 
@@ -117,6 +121,14 @@ class SLAM:
                 save_path=f"{mesh_output_dir}/mesh_{index}.ply",
                 device=self.device
             )
+
+
+        save_keyframe_trajectory(
+            self.keyframes,
+            save_path="mlp_results/traj//trajectory_{index}.png",
+            title=f"Trajectory up to Frame {index}",
+            axis_length=0.1  # 可以调大或调小箭头
+        )
 
         if self.is_first_frame:
             self.is_first_frame = False

@@ -3,6 +3,10 @@ import torch
 import cv2
 
 import matplotlib.pyplot as plt
+import matplotlib
+from mpl_toolkits.mplot3d import Axes3D
+matplotlib.use("Agg")  # 使用无界面的后端
+
 import os
 
 
@@ -101,14 +105,60 @@ def save_loss_curve(losses, index, save_dir):
 
     plt.figure()
     plt.plot(losses, marker='o', linewidth=1)
-    plt.title(f"Track Loss Curve (frame {index})")
+    plt.title(f"Loss Curve (frame {index})")
     plt.xlabel("Iteration")
     plt.ylabel("Loss")
     plt.grid(True)
     plt.savefig(save_path)
     plt.close()
 
+def save_keyframe_trajectory(keyframes, save_path, title="Camera Trajectory", axis_length=0.1):
+    """
+    保存 keyframe 相机轨迹到 PNG，并显示相机朝向
+    :param keyframes: dict, 每个 value 需要有 .c2w (4x4) 相机位姿矩阵
+    :param save_path: 保存路径 (png 文件)
+    :param title: 图像标题
+    :param axis_length: 相机坐标系箭头长度
+    """
+    poses = []
+    for kf in keyframes:
+        c2w = kf.c2w.detach().cpu().numpy()  # (4,4)
+        cam_pos = c2w[:3, 3]  # 相机位置
+        poses.append((cam_pos, c2w[:3, :3]))  # (位置, 旋转矩阵)
 
+    if len(poses) == 0:
+        print("⚠️ No keyframes to plot.")
+        return
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    # 相机位置轨迹
+    cam_positions = np.array([p[0] for p in poses])
+    ax.plot(cam_positions[:, 0], cam_positions[:, 1], cam_positions[:, 2], 'b-', label="Trajectory")
+    ax.scatter(cam_positions[:, 0], cam_positions[:, 1], cam_positions[:, 2], c='r', s=10, label="Keyframes")
+
+    # 每个相机画坐标轴
+    for pos, rot in poses:
+        x_axis = rot[:, 0] * axis_length
+        y_axis = rot[:, 1] * axis_length
+        z_axis = rot[:, 2] * axis_length
+
+        ax.quiver(pos[0], pos[1], pos[2], x_axis[0], x_axis[1], x_axis[2], color='r', linewidth=1)
+        ax.quiver(pos[0], pos[1], pos[2], y_axis[0], y_axis[1], y_axis[2], color='g', linewidth=1)
+        ax.quiver(pos[0], pos[1], pos[2], z_axis[0], z_axis[1], z_axis[2], color='b', linewidth=1)
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.legend()
+    ax.set_title(title)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    plt.savefig(save_path, dpi=300)
+    plt.close(fig)
+
+    # print(f"✅ Saved trajectory with orientations to {save_path}")
 
 # ========== NumPy 版本 ==========
 def normalize_numpy(x, min_val=None, max_val=None):

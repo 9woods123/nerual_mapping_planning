@@ -1,11 +1,8 @@
 import torch
 import numpy as np
 
-
-
-
 class RayCasting:
-    def __init__(self, intrinsic_matrix, sample_ratio=0.001, M_c=20, M_f=10, d_s=0.05, device="cuda"):
+    def __init__(self, intrinsic_matrix, distortion=None, sample_ratio=0.001, M_c=20, M_f=10, d_s=0.05, device="cuda"):
         """
         初始化射线投影类
         :param intrinsic_matrix: 相机内参矩阵 (3x3) torch.Tensor
