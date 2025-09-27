@@ -106,6 +106,9 @@ class Tracker:
             
 
             loss.backward()
+
+            # print(f"[Track Iter {_}] Grad: {self.delta_se3.grad.detach().cpu().numpy()}")
+
             self.optimizer.step()
 
             losses.append(loss.item())

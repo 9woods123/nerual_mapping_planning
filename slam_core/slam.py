@@ -73,7 +73,7 @@ class SLAM:
 
         self.keyframes = []
 
-        self.keyframe_every=7
+        self.keyframe_every=2
 
         self.is_first_frame=True
 
@@ -83,7 +83,8 @@ class SLAM:
                               self.params.camera.near, 
                               self.params.camera.far)
 
-
+        print("Default dtype:", torch.get_default_dtype())
+        print("CUDA dtype (float32 == True?):", torch.tensor([1.0], device="cuda").dtype)
 
     def main_loop(self, color, depth, index, mesh_output_dir="./"):
         timestamp = time.time()

@@ -15,23 +15,6 @@ import os
 
 # Freiburg 1 RGB 	517.3 	516.5 	318.6 	255.3 	0.2624	-0.9531	-0.0054	0.0026 	1.1633 
 
-# camera_params = {
-#     "fx": 517.3,
-#     "fy": 516.5,
-#     "cx": 318.6,
-#     "cy": 255.3,
-#     "width": 640,
-#     "height": 480,
-#     "near": 0.2,
-#     "far": 2.5,
-#     "distortion": {
-#         "k1": 0.2624,
-#         "k2": -0.9531,
-#         "p1": -0.0054,
-#         "p2": 0.0026,
-#         "k3": 1.1633
-#     },
-# }
 
 camera_params = {
     "fx": 517.3,
@@ -68,17 +51,17 @@ mapping_params = {
     "truncation": 0.1,
     "resolution": 0.01,
     "batch_size": 65536,
-    "lr": 1e-3,         # Mapper 学习率
+    "lr": 0.01,         # Mapper 学习率
     "iters": 100,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.0005,  # 对输入图像下采样比例
-    "mesh_every":50,
+    "downsample_ratio": 0.00005,  # 对输入图像下采样比例
+    "mesh_every":25,
 }
 
 
 tracking_params = {
-    "lr": 0.0025,           # 优化位姿学习率
-    "iters": 100,          # 位姿优化迭代次数
-    "downsample_ratio": 0.0001,  # 对输入图像下采样比例
+    "lr": 0.001,           # 优化位姿学习率
+    "iters": 50,          # 位姿优化迭代次数
+    "downsample_ratio": 0.0005,  # 对输入图像下采样比例
 }
 
 
