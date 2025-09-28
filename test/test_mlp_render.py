@@ -17,51 +17,49 @@ import torch
 import cv2
 import numpy as np
 
-
-def load_color_image(image_path):
+def load_color_image(image_path, device="cuda"):
     """
-    读取并返回颜色图像
+    读取并返回颜色图像 (RGB) -> torch.Tensor
     
     :param image_path: 颜色图像的路径
-    :return: 读取的颜色图像 (height, width, 3) 类型为 uint8
+    :param device: 目标设备 (cpu / cuda)
+    :return: torch.Tensor [H, W, 3], dtype=torch.uint8
     """
-    color_image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # 读取为彩色图像
-    
+    color_image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # BGR
     if color_image is None:
         raise FileNotFoundError(f"无法读取图像文件: {image_path}")
     
-    color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)  # 转换为 RGB 格式
-
-
-    return np.array(color_image)  # 转为 NumPy 数组格式
-
-
-def load_depth_image(image_path, factor=5000.0):
-    """
-    读取并返回深度图像，并将其转化为真实的深度值
+    color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)  # 转换为 RGB
+    color_tensor = torch.from_numpy(color_image).to(device)  # (H,W,3), uint8
     
-    :param image_path: 深度图像的路径
-    :param factor: 深度图像的缩放因子，通常为 5000 对应 16-bit 图像
-    :return: 真实深度图 (height, width) 类型为 float32
+    return color_tensor
+
+
+def load_depth_image(image_path, factor=5000.0, device="cuda"):
     """
-    depth_image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)  # 读取为原始深度图像（16-bit 或 32-bit）
-    print(depth_image.dtype, depth_image.shape)
-
-
+    读取并返回深度图像 (转为实际深度值) -> torch.Tensor
+    
+    :param image_path: 深度图像路径
+    :param factor: 深度缩放因子 (默认 5000 对应 16-bit 深度)
+    :param device: 目标设备 (cpu / cuda)
+    :return: torch.Tensor [H, W], dtype=torch.float32
+    """
+    depth_image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)  # 原始深度图
     if depth_image is None:
         raise FileNotFoundError(f"无法读取深度图像文件: {image_path}")
     
-    # 转换为实际的深度值
     depth_image = depth_image.astype(np.float32) / factor
-
-    nonzero_depths = depth_image[depth_image > 0]
-
-    print("非零点数量:", nonzero_depths.shape[0])
-    print("前20个非零深度值:", nonzero_depths[:200])
-    print("最小非零深度:", np.min(nonzero_depths))
-    print("最大非零深度:", np.max(nonzero_depths))
-
-    return depth_image  # 返回深度图像
+    depth_tensor = torch.from_numpy(depth_image).to(device)  # float32
+    
+    # Debug 信息
+    nonzero_depths = depth_tensor[depth_tensor > 0]
+    print("非零点数量:", nonzero_depths.numel())
+    if nonzero_depths.numel() > 0:
+        print("前20个非零深度值:", nonzero_depths[:20].cpu().numpy())
+        print("最小非零深度:", torch.min(nonzero_depths).item())
+        print("最大非零深度:", torch.max(nonzero_depths).item())
+    
+    return depth_tensor
 
 
 
@@ -87,7 +85,8 @@ init_pose = np.eye(4)  # 假设相机位姿是单位矩阵
 
 color_map=load_color_image("sensor_data/color/color_1.png")
 depth_map=load_depth_image("sensor_data/depth/depth_1.png")
-color_map, c_min_val, c_max_val = normalize_numpy(color_map, 0, 255)
+
+color_map, c_min_val, c_max_val = normalize_torch(color_map, 0, 255)
 
 
 # 创建 RayCasting 和 Renderer 实例
@@ -116,59 +115,33 @@ keyframe_dict.append(first_keyframe)
 for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
     
-    rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, init_pose, 480, 640)
-    target_rgb = torch.from_numpy(np.array(rgb_values, dtype=np.float32)).to(device)  # ndarray -> Tensor
-
+    rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, first_keyframe.c2w, 480, 640)
     # 步骤 4: 沿射线采样
 
     all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths = ray_casting.sample_points_along_ray(
-    ray_origin=np.array([0, 0, 0]),  # 射线起点
+    ray_origin=first_keyframe.c2w[:3, 3],  # 射线起点
     rays_direction_list=rays_3d,
     depths_list=depths
     )
 
-    # all_rays_points: 1115 rays, each with (35, 3) points
-    # all_rays_depths: 1115 rays, each with (35,) depths
-    # all_rays_endpoint_3d: 1115 rays, each with (3,) points
-    # all_rays_endpoint_depths: 1115 rays, each with () depths
-    # 假设 all_rays_points 是 list of np.array，每个 shape = (N_samples, 3)
 
-    sampled_rays_points_tensor = torch.tensor(np.stack(all_rays_points, axis=0), dtype=torch.float32).to(device)    # shape = (N_rays, N_samples, 3)
-    sampled_rays_depths_tensor = torch.tensor(np.stack(all_rays_depths, axis=0), dtype=torch.float32).to(device)
+    pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(all_rays_points)
 
-
-    # print("===========================epoch============================")
-    # print("----------all_rays_points----------:")
-    # print(all_rays_points)
-    # print("------------sampled_rays_points_tensor-----------:")
-    # print(sampled_rays_points_tensor)
-    # print("-----------------------------------------------------------:")
-
-    
-
-    target_depth = torch.tensor(np.stack(all_rays_endpoint_depths, axis=0), dtype=torch.float32).to(device)
-
-
-    pred_geo_features, pred_rays_sdfs_tensors, pred_rays_rgbs_tensor = neural_rendering_model(sampled_rays_points_tensor)
-
-    # 使用 Renderer 类根据模型的输出进行最终渲染
-    print("sampled_rays_depths_tensor shape:", sampled_rays_depths_tensor.shape)
-    print("pred_rays_sdfs_tensors shape:", pred_rays_sdfs_tensors.shape)
 
     rendered_color, rendered_depth = renderer.render(
-        sampled_rays_depths_tensor, 
+        all_rays_depths, 
         pred_rays_sdfs_tensors,
         pred_rays_rgbs_tensor
         )
 
-    loss = total_loss(rendered_color, target_rgb, rendered_depth, sampled_rays_depths_tensor, target_depth.unsqueeze(-1), pred_rays_sdfs_tensors)
+    total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, rgb_values, rendered_depth, all_rays_depths, all_rays_endpoint_depths.unsqueeze(-1), pred_rays_sdfs_tensors)
 
     # 打印损失
-    print(f'Epoch {epoch}/{num_epochs}, Loss: {loss.item()}')
+    print(f'Epoch {epoch}/{num_epochs}, Loss: {total_loss_value.item()}')
 
     # 反向传播和优化
     optimizer.zero_grad()  # 清空梯度
-    loss.backward()        # 反向传播
+    total_loss_value.backward()        # 反向传播
     optimizer.step()       # 更新模型参数
 
 

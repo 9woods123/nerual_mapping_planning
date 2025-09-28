@@ -68,6 +68,6 @@ class Renderer:
             points = points.float().to(device)
 
         # 假设 model 返回 (sdf, color)
-        _,sdf_values, color_values = self.model(points)
+        sdf_values, color_values = self.model(points)
 
         return sdf_values, color_values

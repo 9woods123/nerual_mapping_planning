@@ -31,15 +31,13 @@ def test_neural_rendering_model():
 
 
     # 前向传播
-    geo_features, sdf, rgb = model(x)
+    sdf, rgb = model(x)
 
     # 输出结果的形状
-    print(f"geo_features shape: {geo_features.shape}")  # 生成的几何特征（如 h）
     print(f"sdf shape: {sdf.shape}")  # 生成的 SDF 值
     print(f"rgb shape: {rgb.shape}")  # 生成的 RGB 颜色
 
     # 进行简单的断言检查，确保输出的维度正确
-    assert geo_features.shape == (batch_size, 64), f"Expected geo_features shape (batch_size, 64), got {geo_features.shape}"
     assert sdf.shape == (batch_size, 1), f"Expected sdf shape (batch_size, 1), got {sdf.shape}"
     assert rgb.shape == (batch_size, 3), f"Expected rgb shape (batch_size, 3), got {rgb.shape}"
 

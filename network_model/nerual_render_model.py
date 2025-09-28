@@ -25,8 +25,7 @@ class NeuralRenderingModel(nn.Module):
         # One-Blob 编码器
         self.position_encoding =  LearnableGaussianEncoding(input_dim=input_dim, num_freqs=num_freqs)
         
-        pe_out_dim =   input_dim+num_freqs   # 原始 + sin/cos
-
+        pe_out_dim =   self.position_encoding.get_output_dim()   # 原始 + sin/cos
 
         # Hash Grid 编码器
         self.hash_grid_encoder = HashGridMLPEncoder(input_dim, hidden_dim=128, output_dim=128)
@@ -48,19 +47,18 @@ class NeuralRenderingModel(nn.Module):
         :return: 几何信息 (如 SDF) 和 颜色 (RGB)
         """
 
-        oneblob_features = self.position_encoding(x)        # One-Blob Encoding
+        positionencoding_features = self.position_encoding(x)        # One-Blob Encoding
         hash_grid_features = self.hash_grid_encoder(x)        # Hash Grid Encoding
 
         
-        geometry_input = torch.cat([oneblob_features, hash_grid_features], dim=-1)  # 将 One-Blob 和 Hash Grid 特征拼接
+        geometry_input = torch.cat([positionencoding_features, hash_grid_features], dim=-1)  # 将 One-Blob 和 Hash Grid 特征拼接
         geo_features, sdf = self.geometry_decoder(geometry_input)  # 生成几何信息（如 SDF）
         
-        color_input = torch.cat([oneblob_features, geo_features], dim=-1)        # 将 One-Blob 特征和 Geometry Decoder 输出拼接
+        color_input = torch.cat([positionencoding_features, geo_features], dim=-1)        # 将 One-Blob 特征和 Geometry Decoder 输出拼接
         rgb = self.color_decoder(color_input)        # 生成颜色（如 RGB）
 
 
-
-        return geo_features, sdf, rgb
+        return  sdf, rgb
 
 
 class ResidualBlock(nn.Module):
@@ -149,8 +147,10 @@ class GaussianPositionalEncoding(nn.Module):
         return torch.cat([x, torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
 
 
+
+
 class LearnableGaussianEncoding(nn.Module):
-    def __init__(self, input_dim=3, num_freqs=64, sigma=25.0, learnable=True):
+    def __init__(self, input_dim=3, num_freqs=90, sigma=25.0, learnable=True):
         """
         Learnable Gaussian Positional Encoding (Fourier Feature Networks + SIREN)
         """
@@ -165,6 +165,9 @@ class LearnableGaussianEncoding(nn.Module):
             self.B = nn.Parameter(B)  # 可学习
         else:
             self.register_buffer("B", B)  # 固定
+
+    def get_output_dim(self):
+        return self.input_dim + self.num_freqs
 
     def forward(self, x):
         # x: [B, input_dim]
@@ -206,7 +209,7 @@ class SimpleMLPModel(nn.Module):
     def forward(self, x):
         
         ## normlize to [-1,1]
-        x=x/5.0
+        x=x/10.0
 
         x_pe = self.pe(x)
         features = self.mlp_block(x_pe)
@@ -218,4 +221,4 @@ class SimpleMLPModel(nn.Module):
         rgb_input = torch.cat([features, sdf_feat], dim=-1)  # 4. 拼接
         rgb = self.rgb_head(rgb_input)
 
-        return features, sdf, rgb
+        return sdf, rgb

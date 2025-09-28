@@ -9,7 +9,7 @@ from slam_core.tracking import Tracker
 from slam_core.mapping import Mapper
 from slam_core.keyframe import Keyframe
 from visualization.mesher import Mesher
-from network_model.nerual_render_model import SimpleMLPModel
+from network_model.nerual_render_model import SimpleMLPModel,NeuralRenderingModel
 
 from utils.utils import *
 from utils.params import Params
@@ -73,7 +73,9 @@ class SLAM:
 
         self.keyframes = []
 
-        self.keyframe_every=2
+        self.keyframe_every=8
+        ##TODO ,for rgbd_dataset_freiburg1_360 , must be 2 , or we get a bad result.
+
 
         self.is_first_frame=True
 
@@ -110,7 +112,6 @@ class SLAM:
             self.tracker.update_last_pose(joint_opt_pose_latest)
 
 
-
         print(" ", index, "   Track Loss:", track_loss, " Map Loss:", map_loss)
 
         # --- 每隔 mesh_every 帧生成点云 ---
@@ -123,13 +124,6 @@ class SLAM:
                 device=self.device
             )
 
-
-        save_keyframe_trajectory(
-            self.keyframes,
-            save_path="mlp_results/traj//trajectory_{index}.png",
-            title=f"Trajectory up to Frame {index}",
-            axis_length=0.1  # 可以调大或调小箭头
-        )
 
         if self.is_first_frame:
             self.is_first_frame = False

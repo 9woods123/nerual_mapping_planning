@@ -36,10 +36,13 @@ class Tracker:
         self.lr = lr
         self.iters = iters
 
-        self.delta_se3 = torch.zeros(6, device=self.device, requires_grad=True)
+        self.delta_rot = torch.zeros(3, device=self.device, requires_grad=True)
+        self.delta_trans = torch.zeros(3, device=self.device, requires_grad=True)
 
-        self.optimizer = torch.optim.Adam([self.delta_se3], lr=self.lr)
-        # self.optimizer = torch.optim.LBFGS([self.delta_se3], lr=self.lr, max_iter=20)
+        self.optimizer = torch.optim.Adam([
+            {"params": self.delta_trans, "lr": self.lr},
+            {"params": self.delta_rot, "lr": 0.5*self.lr},
+        ])
 
         # 保存前两帧 pose（torch Tensor）
         self.last_pose: torch.Tensor = None
@@ -81,7 +84,8 @@ class Tracker:
 
 
         with torch.no_grad():
-            self.delta_se3.zero_()  # 将 tensor 所有元素置0
+            self.delta_trans.zero_()  # 将 tensor 所有元素置0
+            self.delta_rot.zero_()  # 将 tensor 所有元素置0
             self.optimizer.state.clear()   # 清空动量、方差等历史   
 
 
@@ -90,7 +94,9 @@ class Tracker:
         for _ in range(self.iters):
             self.optimizer.zero_grad()
 
-            pose_mat =  se3_to_SE3(self.delta_se3) @ pred_pose   # torch [4,4]
+            pose_se3=torch.cat([self.delta_rot,self.delta_trans])
+            pose_mat =  se3_to_SE3(pose_se3) @ pred_pose   # torch [4,4]
+            
             rays_3d, rgb_values, depths = self.ray_casting.cast_rays(depth, color, pose_mat,self.height, self.width)
             all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
                 ray_origin=pose_mat[:3, 3],
@@ -98,28 +104,32 @@ class Tracker:
                 depths_list=depths
             )
             
-            _, pred_sdfs, pred_colors = self.model(all_points)
+            pred_sdfs, pred_colors = self.model(all_points)
             rendered_color, rendered_depth = self.renderer.render(all_depths, pred_sdfs, pred_colors)
 
-            loss = total_loss(rendered_color, rgb_values, rendered_depth,
+            total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, rgb_values, rendered_depth,
                              all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
             
 
-            loss.backward()
+            total_loss_value.backward()
 
             # print(f"[Track Iter {_}] Grad: {self.delta_se3.grad.detach().cpu().numpy()}")
 
             self.optimizer.step()
 
-            losses.append(loss.item())
 
-        
-        final_pose = (se3_to_SE3(self.delta_se3) @ pred_pose).clone().detach()  # torch [4,4]
+            losses.append(total_loss_value.item())
 
+        # rot_angle = torch.norm(self.delta_rot).item() * 180.0 / np.pi
+        # trans_norm = torch.norm(self.delta_trans).item()
+        # print(f"[Iter {_}] Loss={total_loss_value.item():.4f}, "
+        # f"rot={rot_angle:.3f} deg, trans={trans_norm:.4f} m")
 
+        pose_se3=torch.cat([self.delta_rot,self.delta_trans])
 
+        final_pose = (se3_to_SE3(pose_se3) @ pred_pose).clone().detach()  # torch [4,4]
 
         save_loss_curve(losses, index, "./mlp_results/tracking_loss")
 
-        return loss.item(),final_pose
+        return losses[-1],final_pose
 

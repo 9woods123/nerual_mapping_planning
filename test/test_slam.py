@@ -127,9 +127,7 @@ if __name__ == "__main__":
         camera_K,
         camera_distortion
     )
-
     slam = SLAM(default_params)
-
     num_frames = 900
     for i in range(num_frames):
         color, depth = frame_loader.load_frame(i+1)
