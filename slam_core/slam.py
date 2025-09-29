@@ -73,7 +73,7 @@ class SLAM:
 
         self.keyframes = []
 
-        self.keyframe_every=8
+        self.keyframe_every=1
         ##TODO ,for rgbd_dataset_freiburg1_360 , must be 2 , or we get a bad result.
 
 
@@ -94,7 +94,7 @@ class SLAM:
         track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
 
         map_loss = 0
-        # --- 关键帧策略 ---
+
         if self.is_first_frame or index % self.keyframe_every == 0:
             # 保存关键帧
             self.keyframes.append(

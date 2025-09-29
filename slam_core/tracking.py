@@ -109,12 +109,16 @@ class Tracker:
 
             total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, rgb_values, rendered_depth,
                              all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
-            
+
 
             total_loss_value.backward()
-
-            # print(f"[Track Iter {_}] Grad: {self.delta_se3.grad.detach().cpu().numpy()}")
-
+         
+            # print(f"[iter {_}] loss={total_loss_value.item():.6f}")
+            # print(" rot:", self.delta_rot.detach().cpu().numpy(),
+            #     " grad:", self.delta_rot.grad.detach().cpu().numpy())
+            # print(" trans:", self.delta_trans.detach().cpu().numpy(),
+            #     " grad:", self.delta_trans.grad.detach().cpu().numpy())
+            torch.nn.utils.clip_grad_norm_([self.delta_rot, self.delta_trans], max_norm=5.0)
             self.optimizer.step()
 
 

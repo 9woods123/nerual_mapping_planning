@@ -57,10 +57,15 @@ class Mapper:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": lr},
-            {"params": self.delta_trans, "lr": track_lr},
-            {"params": self.delta_rot, "lr": 0.5*track_lr},
+            {"params": self.delta_trans, "lr": 0.0},
+            {"params": self.delta_rot, "lr": 0.5*0},
         ])
 
+        # self.optimizer = torch.optim.Adam([
+        #     {"params": self.model.parameters(), "lr": lr},
+        #     {"params": self.delta_trans, "lr": track_lr},
+        #     {"params": self.delta_rot, "lr": 0.5*track_lr},
+        # ])
 
         self.renderer = Renderer(self.model, truncation)
         self.ray_casting = RayCasting(
