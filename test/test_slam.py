@@ -13,6 +13,52 @@ import cv2
 import numpy as np
 import torch
 
+def load_gt_poses(gt_file, device="cuda"):
+    """
+    从 TUM 格式文件中读取 ground truth poses 并返回 c2w 列表
+    """
+    poses = []
+    with open(gt_file, 'r') as f:
+        for line in f:
+            if line.startswith("#") or len(line.strip()) == 0:
+                continue
+            data = line.strip().split()
+            timestamp = float(data[0])
+            tx, ty, tz = map(float, data[1:4])
+            qx, qy, qz, qw = map(float, data[4:8])
+
+            # 转换为旋转矩阵
+            q = torch.tensor([qw, qx, qy, qz], dtype=torch.float32, device=device)
+            R = quat_to_rotmat(q)
+
+            t = torch.tensor([[tx], [ty], [tz]], dtype=torch.float32, device=device)
+
+            # 构造 4x4 世界到相机矩阵 T_w_c
+            T_w_c = torch.eye(4, device=device)
+            T_w_c[:3, :3] = R
+            T_w_c[:3, 3:] = t
+
+            # # 转为相机到世界矩阵 c2w
+            # T_c_w = torch.inverse(T_w_c)
+
+            poses.append(T_w_c)
+            
+    return poses
+
+def quat_to_rotmat(q):
+    """
+    四元数转旋转矩阵
+    q = [qw, qx, qy, qz]
+    """
+    qw, qx, qy, qz = q
+    R = torch.tensor([
+        [1 - 2*qy*qy - 2*qz*qz,     2*qx*qy - 2*qz*qw,     2*qx*qz + 2*qy*qw],
+        [2*qx*qy + 2*qz*qw,         1 - 2*qx*qx - 2*qz*qz, 2*qy*qz - 2*qx*qw],
+        [2*qx*qz - 2*qy*qw,         2*qy*qz + 2*qx*qw,     1 - 2*qx*qx - 2*qy*qy]
+    ], device=q.device, dtype=q.dtype)
+    return R
+
+
 
 
 def load_color_image_to_tensor(image_path, K=None, dist_coeffs=None, device="cuda", visualize=False):
@@ -127,8 +173,16 @@ if __name__ == "__main__":
         camera_K,
         camera_distortion
     )
+
+        # === 加载真值位姿 ===
+    gt_file = "sensor_data/rgbd_dataset_freiburg1_360/groundtruth.txt"
+    gt_poses = load_gt_poses(gt_file)
+    print(f"Loaded {len(gt_poses)} ground truth poses")
+    print("gt_poses[0]",gt_poses[0])
     slam = SLAM(default_params)
+    
     num_frames = 900
     for i in range(num_frames):
         color, depth = frame_loader.load_frame(i+1)
-        slam.main_loop(color, depth, i+1, mesh_output_dir="./meshes")
+        # slam.main_loop(color, depth, i+1, mesh_output_dir="./meshes")
+        slam.main_loop(color, depth, gt_poses, i+1, mesh_output_dir="./meshes")

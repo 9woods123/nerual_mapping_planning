@@ -54,18 +54,11 @@ class Mapper:
             nn.Parameter(torch.zeros(3, device=self.device), requires_grad=True) for _ in range(max_window_size)
         ])
 
-
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": lr},
-            {"params": self.delta_trans, "lr": 0.0},
-            {"params": self.delta_rot, "lr": 0.5*0},
+            {"params": self.delta_trans, "lr": 0*track_lr},
+            {"params": self.delta_rot, "lr": 0*track_lr},
         ])
-
-        # self.optimizer = torch.optim.Adam([
-        #     {"params": self.model.parameters(), "lr": lr},
-        #     {"params": self.delta_trans, "lr": track_lr},
-        #     {"params": self.delta_rot, "lr": 0.5*track_lr},
-        # ])
 
         self.renderer = Renderer(self.model, truncation)
         self.ray_casting = RayCasting(

@@ -41,7 +41,7 @@ class Tracker:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.delta_trans, "lr": self.lr},
-            {"params": self.delta_rot, "lr": 0.5*self.lr},
+            {"params": self.delta_rot, "lr": 0.1*self.lr},
         ])
 
         # 保存前两帧 pose（torch Tensor）
@@ -118,7 +118,6 @@ class Tracker:
             #     " grad:", self.delta_rot.grad.detach().cpu().numpy())
             # print(" trans:", self.delta_trans.detach().cpu().numpy(),
             #     " grad:", self.delta_trans.grad.detach().cpu().numpy())
-            torch.nn.utils.clip_grad_norm_([self.delta_rot, self.delta_trans], max_norm=5.0)
             self.optimizer.step()
 
 

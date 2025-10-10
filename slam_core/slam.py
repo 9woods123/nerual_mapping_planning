@@ -88,11 +88,17 @@ class SLAM:
         print("Default dtype:", torch.get_default_dtype())
         print("CUDA dtype (float32 == True?):", torch.tensor([1.0], device="cuda").dtype)
 
-    def main_loop(self, color, depth, index, mesh_output_dir="./"):
+
+
+    def main_loop(self, color, depth, gt_poses, index, mesh_output_dir="./"):
         timestamp = time.time()
 
         track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
-
+        # track_loss=0
+        # gt_curr_pose=gt_poses[index-1]
+        # track_pose=gt_curr_pose
+        # print("gt_curr_pose",gt_curr_pose)
+        
         map_loss = 0
 
         if self.is_first_frame or index % self.keyframe_every == 0:
@@ -111,7 +117,6 @@ class SLAM:
 
             self.tracker.update_last_pose(joint_opt_pose_latest)
 
-
         print(" ", index, "   Track Loss:", track_loss, " Map Loss:", map_loss)
 
         # --- 每隔 mesh_every 帧生成点云 ---
@@ -127,4 +132,3 @@ class SLAM:
 
         if self.is_first_frame:
             self.is_first_frame = False
-

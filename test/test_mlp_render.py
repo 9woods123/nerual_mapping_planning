@@ -80,7 +80,16 @@ intrinsic_matrix = np.array([[525.0, 0, 319.5],
 
 truncation=0.1  # 10cm
 
-init_pose = np.eye(4)  # 假设相机位姿是单位矩阵
+
+
+
+# init_pose = np.eye(4)  # 假设相机位姿是单位矩阵
+init_pose = np.array([
+    [ 0.9976, -0.0508,  0.0480,  0.4183],
+    [-0.0621, -0.3305,  0.9417, -0.4920],
+    [-0.0320, -0.9424, -0.3328,  1.6849],
+    [ 0.0000,  0.0000,  0.0000,  1.0000]
+], dtype=np.float32)
 
 
 color_map=load_color_image("sensor_data/color/color_1.png")
@@ -112,12 +121,13 @@ first_keyframe=Keyframe(0.0,init_pose,depth_map,color_map, fx=525.0, fy=525.0, c
                 frame_id=0)
 keyframe_dict.append(first_keyframe)
 
+
 for epoch in range(num_epochs):
     # 步骤 3: 生成射线数据
     
     rays_3d, rgb_values, depths = ray_casting.cast_rays(depth_map, color_map, first_keyframe.c2w, 480, 640)
-    # 步骤 4: 沿射线采样
 
+    # 步骤 4: 沿射线采样
     all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths = ray_casting.sample_points_along_ray(
     ray_origin=first_keyframe.c2w[:3, 3],  # 射线起点
     rays_direction_list=rays_3d,
@@ -145,6 +155,8 @@ for epoch in range(num_epochs):
     optimizer.step()       # 更新模型参数
 
 
+
+
 mesher = Mesher(min_x=-3, min_y=-3, min_z=-3,
                 max_x=3, max_y=3, max_z=3,
                 fx=525.0, fy=525.0, cx=319.5, cy=239.5,
@@ -160,3 +172,25 @@ mesher.generate_surface_pointcloud(
     device=device
 )
 
+
+# import open3d as o3d
+
+
+# # 假设 all_rays_endpoint_3d 是 (N, 3) torch.Tensor
+# points_np = all_rays_endpoint_3d.cpu().numpy()  # 转为 numpy
+
+# # 1️⃣ 射线终点点云
+# pcd = o3d.geometry.PointCloud()
+# pcd.points = o3d.utility.Vector3dVector(points_np)
+# pcd.paint_uniform_color([1.0, 0.0, 0.0])  # 红色
+
+# # 2️⃣ 世界原点坐标系
+# world_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0,0,0])
+
+# # 3️⃣ 相机初始 pose 坐标系
+# cam_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
+# # init_pose 是 T_wc
+# cam_coord.transform(init_pose)
+
+# # 4️⃣ 可视化
+# o3d.visualization.draw_geometries([pcd, world_coord, cam_coord])
