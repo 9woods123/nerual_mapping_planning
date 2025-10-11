@@ -40,10 +40,43 @@ def select_window(keyframes, window_size):
 
 
 class Mapper:
-    def __init__(self, model, fx, fy, cx, cy,  width, height,truncation=0.1, lr=1e-3, track_lr=1e-3, iters=100,sample_ratio=0.001, device="cuda"):
 
+    def __init__(self, model, 
+                 params,
+                 device="cuda"):
+        
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = model
+        self.params=params
+
+        self.fx = self.params.camera.fx
+        self.fy = self.params.camera.fy
+        self.cx = self.params.camera.cx
+        self.cy = self.params.camera.cy
+
+        self.height=self.params.camera.height
+        self.width=self.params.camera.width
+        
+        self.truncation=self.params.mapping.truncation
+
+        self.mapping_lr=self.params.mapping.lr
+        self.tracking_lr=self.params.tracking.lr
+
+        self.iters=self.params.mapping.iters
+        self.sample_ratio=self.params.mapping.sample_ratio
+        
+
+        self.renderer = Renderer(self.model, self.truncation)
+
+        self.ray_casting = RayCasting(
+            np.array([[self.fx, 0, self.cx],
+                      [0, self.fy, self.cy],
+                      [0, 0, 1]]),
+            sample_ratio=self.sample_ratio,
+            ignore_edge_W=0,
+            ignore_edge_H=0
+        )
+
 
         max_window_size=10
 
@@ -55,23 +88,10 @@ class Mapper:
         ])
 
         self.optimizer = torch.optim.Adam([
-            {"params": self.model.parameters(), "lr": lr},
-            {"params": self.delta_trans, "lr": track_lr},
-            {"params": self.delta_rot, "lr": track_lr},
+            {"params": self.model.parameters(), "lr": self.mapping_lr},
+            {"params": self.delta_trans, "lr": self.tracking_lr},
+            {"params": self.delta_rot, "lr": self.tracking_lr},
         ])
-
-        self.renderer = Renderer(self.model, truncation)
-        self.ray_casting = RayCasting(
-            np.array([[fx, 0, cx],
-                      [0, fy, cy],
-                      [0, 0, 1]]),
-            sample_ratio=sample_ratio
-        )        
-        
-        self.iters=iters
-        
-        self.width=width
-        self.height=height
 
 
     def update_map(self, keyframes, is_first_frame, index, window_size=10):
@@ -153,7 +173,6 @@ class Mapper:
             iter_end = time.time()
 
             # print(f"[Iter {i}] BA_loss={BA_loss.item():.6f}, total_time={iter_end-iter_start:.3f}s")
-
 
 
         with torch.no_grad():

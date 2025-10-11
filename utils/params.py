@@ -53,7 +53,7 @@ mapping_params = {
     "batch_size": 65536,
     "lr": 0.001,         # Mapper 学习率
     "iters": 50,       # Mapper 内部优化迭代次数
-    "sample_ratio": 0.01,  # 对输入图像下采样比例
+    "sample_ratio": 0.002,  # 对输入图像下采样比例
     "mesh_every":20,
 }
 
@@ -61,7 +61,7 @@ mapping_params = {
 tracking_params = {
     "lr": 0.01,           # 优化位姿学习率
     "iters": 50,          # 位姿优化迭代次数
-    "sample_ratio": 0.01,  # 对输入图像下采样比例
+    "sample_ratio": 0.003,  # 对输入图像下采样比例
     "ignore_edge_H":50,
     "ignore_edge_W":50
 }
@@ -72,6 +72,7 @@ model_params = {
     "hidden_dim": 512,
     "num_layers": 4,
 }
+
 
 # ============ 工具函数 =============
 def dict_to_namespace(d):

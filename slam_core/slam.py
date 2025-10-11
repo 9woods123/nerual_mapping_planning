@@ -30,7 +30,6 @@ class SLAM:
         self.cy = self.params.camera.cy
         self.height=self.params.camera.height
         self.width=self.params.camera.width
-        self.distortion_params=self.params.camera.distortion
 
         self.device = device
 
@@ -41,38 +40,26 @@ class SLAM:
         ).to(self.device)
 
 
+
         self.tracker = Tracker(
             model=self.model,
-            fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
-            width=self.width, height=self.height,
-            truncation=self.params.mapping.truncation,
-            lr=self.params.tracking.lr,
-            iters=self.params.tracking.iters,
-            sample_ratio=self.params.tracking.sample_ratio,
-            ignore_edge_H=self.params.tracking.ignore_edge_H,
-            ignore_edge_W=self.params.tracking.ignore_edge_W,
+            params=params,
             device=self.device
         )
 
+
         self.mapper = Mapper(
             model=self.model,
-            fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
-            width=self.width, height=self.height,
-            truncation=self.params.mapping.truncation,
-            lr=self.params.mapping.lr,
-            track_lr=self.params.tracking.lr,
-            iters=self.params.mapping.iters,
-            sample_ratio=self.params.mapping.sample_ratio,
+            params=params,
             device=self.device
         )
 
         self.mesher_resolution = self.params.mapping.resolution
-        
         self.mesh_every = self.params.mapping.mesh_every
 
         self.keyframes = []
 
-        self.keyframe_every=5
+        self.keyframe_every=2
         ##TODO ,for rgbd_dataset_freiburg1_360 , must be 2 , or we get a bad result.
 
 
@@ -80,7 +67,9 @@ class SLAM:
 
         self.last_pose = None
         self.prev_pose = None
-        self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 640, 480, self.mesher_resolution,
+        self.mesher = Mesher(-3,-3,-3,3,3,3, self.fx, self.fy, self.cx, self.cy, 
+                              self.width, self.height, 
+                              self.mesher_resolution,
                               self.params.camera.near, 
                               self.params.camera.far)
 

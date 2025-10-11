@@ -19,31 +19,39 @@ from network_model.loss_calculate import total_loss
 from utils.utils import save_loss_curve
 
 class Tracker:
-    def __init__(self, model, fx, fy, cx, cy, width,
-                  height ,truncation=0.1, lr=1e-2, iters=20, sample_ratio=0.001, 
-                  ignore_edge_W=None,
-                  ignore_edge_H=None,
-                  device="cuda"):
+    def __init__(self, model, 
+                 params,
+                 device="cuda"):
         
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
-        
         self.model = model
-        self.renderer = Renderer(self.model, truncation)
+        self.params=params
+
+        self.fx = self.params.camera.fx
+        self.fy = self.params.camera.fy
+        self.cx = self.params.camera.cx
+        self.cy = self.params.camera.cy
+        self.height=self.params.camera.height
+        self.width=self.params.camera.width
+        self.truncation=self.params.mapping.truncation
+
+        self.lr=self.params.tracking.lr
+        self.iters=self.params.tracking.iters
+        self.sample_ratio=self.params.tracking.sample_ratio
+        self.ignore_edge_H=self.params.tracking.ignore_edge_H
+        self.ignore_edge_W=self.params.tracking.ignore_edge_W    
+           
+        self.renderer = Renderer(self.model, self.truncation)
 
         self.ray_casting = RayCasting(
-            np.array([[fx, 0, cx],
-                      [0, fy, cy],
+            np.array([[self.fx, 0, self.cx],
+                      [0, self.fy, self.cy],
                       [0, 0, 1]]),
-            sample_ratio=sample_ratio,
-            ignore_edge_W=ignore_edge_W,
-            ignore_edge_H=ignore_edge_H
+            sample_ratio=self.sample_ratio,
+            ignore_edge_W=self.ignore_edge_W,
+            ignore_edge_H=self.ignore_edge_H
         )
 
-        self.width=width
-        self.height=height
-
-        self.lr = lr
-        self.iters = iters
 
         self.delta_rot = torch.zeros(3, device=self.device, requires_grad=True)
         self.delta_trans = torch.zeros(3, device=self.device, requires_grad=True)
@@ -119,23 +127,13 @@ class Tracker:
             total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, rgb_values, rendered_depth,
                              all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
 
-
             total_loss_value.backward()
-         
-            # print(f"[iter {_}] loss={total_loss_value.item():.6f}")
-            # print(" rot:", self.delta_rot.detach().cpu().numpy(),
-            #     " grad:", self.delta_rot.grad.detach().cpu().numpy())
-            # print(" trans:", self.delta_trans.detach().cpu().numpy(),
-            #     " grad:", self.delta_trans.grad.detach().cpu().numpy())
+
             self.optimizer.step()
 
 
             losses.append(total_loss_value.item())
 
-        # rot_angle = torch.norm(self.delta_rot).item() * 180.0 / np.pi
-        # trans_norm = torch.norm(self.delta_trans).item()
-        # print(f"[Iter {_}] Loss={total_loss_value.item():.4f}, "
-        # f"rot={rot_angle:.3f} deg, trans={trans_norm:.4f} m")
 
         pose_se3=torch.cat([self.delta_rot,self.delta_trans])
 
