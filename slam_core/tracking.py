@@ -100,7 +100,7 @@ class Tracker:
             rays_3d, rgb_values, depths = self.ray_casting.cast_rays(depth, color, pose_mat,self.height, self.width)
             all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
                 ray_origin=pose_mat[:3, 3],
-                rays_direction_list=rays_3d,
+                rays_direction_world=rays_3d,
                 depths_list=depths
             )
             

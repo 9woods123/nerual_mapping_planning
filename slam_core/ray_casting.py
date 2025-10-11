@@ -61,7 +61,7 @@ class RayCasting:
         return world_coords[:3].T, rgb, depth
 
     
-    def sample_points_along_ray(self, ray_origin, rays_direction_list, depths_list, M_c=None, M_f=None, d_s=None):
+    def sample_points_along_ray(self, ray_origin, rays_direction_world, depths_list, M_c=None, M_f=None, d_s=None):
         """
         深度引导采样 (Torch版)
         :param ray_origin: (3,) torch.Tensor
@@ -75,12 +75,12 @@ class RayCasting:
         if d_s is None:
             d_s = self.d_s
 
-        N = rays_direction_list.shape[0]
+        N = rays_direction_world.shape[0]
         # rays_direction_list: (N, 3) 世界坐标下每个像素对应的点
         # ray_origin: (3,) 世界坐标下的相机中心
 
         # 计算射线方向
-        rays_direction = rays_direction_list - ray_origin.unsqueeze(0)  # (N, 3)
+        rays_direction = rays_direction_world - ray_origin.unsqueeze(0)  # (N, 3)
         rays_direction = rays_direction / torch.norm(rays_direction, dim=1, keepdim=True)  # 归一化
 
         all_points = []

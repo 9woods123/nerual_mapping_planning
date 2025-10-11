@@ -130,7 +130,7 @@ for epoch in range(num_epochs):
     # 步骤 4: 沿射线采样
     all_rays_points, all_rays_depths, all_rays_endpoint_3d, all_rays_endpoint_depths = ray_casting.sample_points_along_ray(
     ray_origin=first_keyframe.c2w[:3, 3],  # 射线起点
-    rays_direction_list=rays_3d,
+    rays_direction_world=rays_3d,
     depths_list=depths
     )
 

@@ -104,8 +104,8 @@ def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, p
 
     loss_color = 20* color_loss(pred_rgb, gt_rgb)  # 颜色损失
     loss_depth = 10* depth_loss(surface_depths_tensor, pred_d)  # 深度损失
-    loss_surface = 500* sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
-    loss_free = 100*free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
+    loss_surface = 5000* sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
+    loss_free = 1000*free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
 
     total_loss_value = loss_color + loss_depth + loss_surface + loss_free
 

@@ -56,8 +56,8 @@ class Mapper:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": lr},
-            {"params": self.delta_trans, "lr": 0*track_lr},
-            {"params": self.delta_rot, "lr": 0*track_lr},
+            {"params": self.delta_trans, "lr": 0.5*track_lr},
+            {"params": self.delta_rot, "lr": 0.5*track_lr},
         ])
 
         self.renderer = Renderer(self.model, truncation)
@@ -118,7 +118,7 @@ class Mapper:
                 t1 = time.time()
                 all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
                     ray_origin=pose_mat[:3, 3],
-                    rays_direction_list=rays_3d,
+                    rays_direction_world=rays_3d,
                     depths_list=depths
                 )
                 t2 = time.time()
@@ -171,11 +171,7 @@ class Mapper:
         
         save_loss_curve(ba_losses, index, "./mlp_results/mapping_loss")
 
-        # print(f"[Loss] color: {loss_color.item():.6f}, "
-        #     f"depth: {loss_depth.item():.6f}, "
-        #     f"surface_sdf: {loss_surface.item():.6f}, "
-        #     f"free_sdf: {loss_free.item():.6f}, "
-        #     f"total: {total_loss_value.item():.6f}")
+
 
         return BA_loss.item(),joint_opt_pose_latest
 

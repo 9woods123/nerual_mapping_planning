@@ -58,9 +58,6 @@ def quat_to_rotmat(q):
     ], device=q.device, dtype=q.dtype)
     return R
 
-
-
-
 def load_color_image_to_tensor(image_path, K=None, dist_coeffs=None, device="cuda", visualize=False):
     """
     读取颜色图像并转换为 torch.Tensor，范围 [0,1]，可选去畸变
@@ -180,7 +177,10 @@ if __name__ == "__main__":
     print(f"Loaded {len(gt_poses)} ground truth poses")
     print("gt_poses[0]",gt_poses[0])
     slam = SLAM(default_params)
-    
+
+
+
+
     num_frames = 900
     for i in range(num_frames):
         color, depth = frame_loader.load_frame(i+1)

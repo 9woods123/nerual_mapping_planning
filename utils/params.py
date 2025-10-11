@@ -53,13 +53,13 @@ mapping_params = {
     "batch_size": 65536,
     "lr": 0.001,         # Mapper 学习率
     "iters": 50,       # Mapper 内部优化迭代次数
-    "downsample_ratio": 0.00018,  # 对输入图像下采样比例
-    "mesh_every":20,
+    "downsample_ratio": 0.001,  # 对输入图像下采样比例
+    "mesh_every":100,
 }
 
 
 tracking_params = {
-    "lr": 0.01,           # 优化位姿学习率
+    "lr": 0.005,           # 优化位姿学习率
     "iters": 50,          # 位姿优化迭代次数
     "downsample_ratio": 0.0005,  # 对输入图像下采样比例
 }
@@ -68,7 +68,7 @@ tracking_params = {
 model_params = {
     "input_dim": 3,
     "hidden_dim": 512,
-    "num_layers": 8,
+    "num_layers": 4,
 }
 
 # ============ 工具函数 =============

@@ -73,7 +73,7 @@ class SLAM:
 
         self.keyframes = []
 
-        self.keyframe_every=1
+        self.keyframe_every=5
         ##TODO ,for rgbd_dataset_freiburg1_360 , must be 2 , or we get a bad result.
 
 
@@ -90,15 +90,12 @@ class SLAM:
 
 
 
-    def main_loop(self, color, depth, gt_poses, index, mesh_output_dir="./"):
+    def main_loop(self, color, depth, gt_pose, index, mesh_output_dir="./"):
         timestamp = time.time()
 
-        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
-        # track_loss=0
-        # gt_curr_pose=gt_poses[index-1]
-        # track_pose=gt_curr_pose
-        # print("gt_curr_pose",gt_curr_pose)
-        
+        # track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
+        track_loss=0
+        track_pose=gt_pose
         map_loss = 0
 
         if self.is_first_frame or index % self.keyframe_every == 0:
