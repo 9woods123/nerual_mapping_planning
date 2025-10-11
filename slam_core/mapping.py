@@ -40,7 +40,7 @@ def select_window(keyframes, window_size):
 
 
 class Mapper:
-    def __init__(self, model, fx, fy, cx, cy,  width, height,distortion,truncation=0.1, lr=1e-3, track_lr=1e-3, iters=100,downsample_ratio=0.001, device="cuda"):
+    def __init__(self, model, fx, fy, cx, cy,  width, height,truncation=0.1, lr=1e-3, track_lr=1e-3, iters=100,sample_ratio=0.001, device="cuda"):
 
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model = model
@@ -56,8 +56,8 @@ class Mapper:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": lr},
-            {"params": self.delta_trans, "lr": 0.5*track_lr},
-            {"params": self.delta_rot, "lr": 0.5*track_lr},
+            {"params": self.delta_trans, "lr": track_lr},
+            {"params": self.delta_rot, "lr": track_lr},
         ])
 
         self.renderer = Renderer(self.model, truncation)
@@ -65,8 +65,7 @@ class Mapper:
             np.array([[fx, 0, cx],
                       [0, fy, cy],
                       [0, 0, 1]]),
-                      distortion,
-            sample_ratio=downsample_ratio
+            sample_ratio=sample_ratio
         )        
         
         self.iters=iters

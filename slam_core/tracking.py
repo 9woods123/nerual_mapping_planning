@@ -19,17 +19,26 @@ from network_model.loss_calculate import total_loss
 from utils.utils import save_loss_curve
 
 class Tracker:
-    def __init__(self, model, fx, fy, cx, cy, width, height, distortion ,truncation=0.1, lr=1e-2, iters=20, downsample_ratio=0.001, device="cuda"):
+    def __init__(self, model, fx, fy, cx, cy, width,
+                  height ,truncation=0.1, lr=1e-2, iters=20, sample_ratio=0.001, 
+                  ignore_edge_W=None,
+                  ignore_edge_H=None,
+                  device="cuda"):
+        
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
+        
         self.model = model
         self.renderer = Renderer(self.model, truncation)
+
         self.ray_casting = RayCasting(
             np.array([[fx, 0, cx],
                       [0, fy, cy],
                       [0, 0, 1]]),
-                      distortion,
-            sample_ratio=downsample_ratio
+            sample_ratio=sample_ratio,
+            ignore_edge_W=ignore_edge_W,
+            ignore_edge_H=ignore_edge_H
         )
+
         self.width=width
         self.height=height
 
@@ -41,7 +50,7 @@ class Tracker:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.delta_trans, "lr": self.lr},
-            {"params": self.delta_rot, "lr": 0.1*self.lr},
+            {"params": self.delta_rot, "lr": self.lr},
         ])
 
         # 保存前两帧 pose（torch Tensor）

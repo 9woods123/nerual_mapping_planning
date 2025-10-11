@@ -45,25 +45,24 @@ class SLAM:
             model=self.model,
             fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
             width=self.width, height=self.height,
-            distortion=self.distortion_params,
             truncation=self.params.mapping.truncation,
             lr=self.params.tracking.lr,
             iters=self.params.tracking.iters,
-            downsample_ratio=self.params.tracking.downsample_ratio,
+            sample_ratio=self.params.tracking.sample_ratio,
+            ignore_edge_H=self.params.tracking.ignore_edge_H,
+            ignore_edge_W=self.params.tracking.ignore_edge_W,
             device=self.device
         )
-
 
         self.mapper = Mapper(
             model=self.model,
             fx=self.fx, fy=self.fy, cx=self.cx, cy=self.cy,
             width=self.width, height=self.height,
-            distortion=self.distortion_params,
             truncation=self.params.mapping.truncation,
             lr=self.params.mapping.lr,
             track_lr=self.params.tracking.lr,
             iters=self.params.mapping.iters,
-            downsample_ratio=self.params.mapping.downsample_ratio,
+            sample_ratio=self.params.mapping.sample_ratio,
             device=self.device
         )
 
@@ -93,9 +92,11 @@ class SLAM:
     def main_loop(self, color, depth, gt_pose, index, mesh_output_dir="./"):
         timestamp = time.time()
 
-        # track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
-        track_loss=0
-        track_pose=gt_pose
+        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
+
+        # track_loss=0
+        # track_pose=gt_pose
+
         map_loss = 0
 
         if self.is_first_frame or index % self.keyframe_every == 0:

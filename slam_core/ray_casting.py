@@ -2,14 +2,17 @@ import torch
 import numpy as np
 
 class RayCasting:
-    def __init__(self, intrinsic_matrix, distortion=None, sample_ratio=0.001, M_c=20, M_f=10, d_s=0.05, device="cuda"):
+
+    def __init__(self, intrinsic_matrix,  
+                sample_ratio=0.001, 
+                M_c=20, 
+                M_f=10, 
+                d_s=0.05, 
+                ignore_edge_W=None,
+                ignore_edge_H=None,
+                device="cuda"):
         """
         初始化射线投影类
-        :param intrinsic_matrix: 相机内参矩阵 (3x3) torch.Tensor
-        :param sample_ratio: 像素采样比例
-        :param M_c: 每条射线均匀采样的点数
-        :param M_f: 每条射线近表面采样的点数
-        :param d_s: 近表面采样时的深度偏移量
         """
         if isinstance(intrinsic_matrix, np.ndarray):
             intrinsic_matrix = torch.from_numpy(intrinsic_matrix).float()
@@ -21,15 +24,32 @@ class RayCasting:
         self.d_s = d_s
         self.device = device
 
+        # 新增
+        self.ignore_edge_W = ignore_edge_W
+        self.ignore_edge_H = ignore_edge_H
+
     def _sample_pixels(self, height, width):
         """
-        随机采样像素索引 (torch版)
+        随机采样像素索引 (忽略边缘区域)
         """
-        total_pixels = height * width
-        sample_size = int(total_pixels * self.sample_ratio)
-        sampled_indices = torch.randperm(total_pixels, device=self.device)[:sample_size]
-        return sampled_indices
+        ignore_W = self.ignore_edge_W or 0
+        ignore_H = self.ignore_edge_H or 0
 
+        u = torch.arange(ignore_W, width - ignore_W, device=self.device)
+        v = torch.arange(ignore_H, height - ignore_H, device=self.device)
+        uu, vv = torch.meshgrid(u, v, indexing='xy')
+        coords = torch.stack([uu.flatten(), vv.flatten()], dim=1)
+
+        total_pixels = coords.shape[0]
+        sample_size = int(total_pixels * self.sample_ratio)
+
+        sampled_indices = torch.randperm(total_pixels, device=self.device)[:sample_size]
+        sampled_uv = coords[sampled_indices]
+
+        u_sampled = sampled_uv[:, 0]
+        v_sampled = sampled_uv[:, 1]
+        return u_sampled, v_sampled
+    
     def cast_rays(self, depth_map, color_map, pose, height, width):
         """
         通过深度图和彩色图生成射线 (Torch版)
@@ -37,11 +57,9 @@ class RayCasting:
         :param color_map: (H, W, 3) torch.Tensor
         :param pose: (4, 4) torch.Tensor
         """
-        sampled_indices = self._sample_pixels(height, width)
+        u, v = self._sample_pixels(height, width)
 
-        v = sampled_indices // width
-        u = sampled_indices % width
-        depth = depth_map[v, u]
+        depth = depth_map[v.long(), u.long()]
 
         # 过滤掉无效深度
         valid_mask = depth > 0
