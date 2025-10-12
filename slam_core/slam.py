@@ -59,7 +59,7 @@ class SLAM:
 
         self.keyframes = []
 
-        self.keyframe_every=2
+        self.keyframe_every=self.params.mapping.keyframe_every
         ##TODO ,for rgbd_dataset_freiburg1_360 , must be 2 , or we get a bad result.
 
 
@@ -85,6 +85,10 @@ class SLAM:
 
         # track_loss=0
         # track_pose=gt_pose
+        
+        if self.is_first_frame:
+            track_pose=gt_pose
+
 
         map_loss = 0
 
@@ -104,7 +108,14 @@ class SLAM:
 
             self.tracker.update_last_pose(joint_opt_pose_latest)
 
-        print(" ", index, "   Track Loss:", track_loss, " Map Loss:", map_loss)
+
+        trans_err, rot_err = compute_pose_error(gt_pose, track_pose, device=self.device)
+
+        print(
+            f"Frame {index:04d} | Track Loss: {track_loss:.4f} | Map Loss: {map_loss:.4f} "
+            f"| Trans Err: {trans_err:.4f} m | Rot Err: {rot_err:.3f}°"
+        )
+
 
         # --- 每隔 mesh_every 帧生成点云 ---
         if index % self.mesh_every == 0:

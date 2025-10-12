@@ -15,7 +15,7 @@ from network_model.loss_calculate import total_loss
 from slam_core.se3_utils import se3_to_SE3
 import random
 from utils.utils import save_loss_curve
-
+from utils.utils import compute_pose_error 
 import random
 
 def select_window(keyframes, window_size):
@@ -89,8 +89,8 @@ class Mapper:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": self.mapping_lr},
-            {"params": self.delta_trans, "lr": self.tracking_lr},
-            {"params": self.delta_rot, "lr": self.tracking_lr},
+            {"params": self.delta_trans, "lr": 1*self.tracking_lr},
+            {"params": self.delta_rot, "lr": 0.1*self.tracking_lr},
         ])
 
 
@@ -161,6 +161,8 @@ class Mapper:
 
                 BA_loss += total_loss_value
 
+
+                
                 # print per-frame time
                 # print(f"[Keyframe {j}] cast={t1-t0:.3f}s, sample={t2-t1:.3f}s, "
                 #     f"model={t3-t2:.3f}s, render={t4-t3:.3f}s, loss={t5-t4:.3f}s, total={t5-kf_start:.3f}s")
@@ -174,7 +176,13 @@ class Mapper:
 
             # print(f"[Iter {i}] BA_loss={BA_loss.item():.6f}, total_time={iter_end-iter_start:.3f}s")
 
-
+        print(      f"\n[Loss ]"
+            f"\n  🎨 Color   : {loss_color.item():.6f}"
+            f"\n  📏 Depth   : {loss_depth.item():.6f}"
+            f"\n  🧩 Surface : {loss_surface.item():.6f}"
+            f"\n  🌌 Free    : {loss_free.item():.6f}"
+            f"\n  🔥 Total   : {total_loss_value.item():.6f}\n")
+        
         with torch.no_grad():
             # 优化完成后，把 delta_se3s 应用到关键帧的 c2w
             for j, kf in enumerate(used_keyframes):
@@ -186,7 +194,9 @@ class Mapper:
         pose_se3_latest= torch.cat([self.delta_rot[-1],self.delta_trans[-1]])
         joint_opt_pose_latest = (se3_to_SE3(pose_se3_latest) @ 
                                 used_keyframes[-1].c2w.to(self.device)).detach().clone()
+            # --- 计算误差 ---
         
+
         save_loss_curve(ba_losses, index, "./mlp_results/mapping_loss")
 
 

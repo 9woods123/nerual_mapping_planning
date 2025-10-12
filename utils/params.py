@@ -53,24 +53,25 @@ mapping_params = {
     "batch_size": 65536,
     "lr": 0.001,         # Mapper 学习率
     "iters": 50,       # Mapper 内部优化迭代次数
-    "sample_ratio": 0.002,  # 对输入图像下采样比例
-    "mesh_every":20,
+    "sample_ratio": 0.0001,  # 对输入图像下采样比例
+    "mesh_every":500,
+    "keyframe_every":5,
 }
 
 
 tracking_params = {
-    "lr": 0.01,           # 优化位姿学习率
+    "lr": 0.001,           # 优化位姿学习率
     "iters": 50,          # 位姿优化迭代次数
-    "sample_ratio": 0.003,  # 对输入图像下采样比例
-    "ignore_edge_H":50,
-    "ignore_edge_W":50
+    "sample_ratio": 0.001,  # 对输入图像下采样比例
+    "ignore_edge_H":100,
+    "ignore_edge_W":100
 }
 
 
 model_params = {
     "input_dim": 3,
     "hidden_dim": 512,
-    "num_layers": 4,
+    "num_layers": 8,
 }
 
 

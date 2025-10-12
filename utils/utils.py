@@ -9,6 +9,53 @@ matplotlib.use("Agg")  # 使用无界面的后端
 
 import os
 
+import torch
+
+
+def orthogonalize_rotation(R: torch.Tensor) -> torch.Tensor:
+    """
+    对旋转矩阵进行正交化，保证 R^T R = I
+    使用 SVD 方法。
+    
+    Args:
+        R: (3,3) 旋转矩阵，可能有数值误差
+    
+    Returns:
+        R_ortho: (3,3) 正交化后的旋转矩阵
+    """
+    U, _, Vt = torch.linalg.svd(R)
+    R_ortho = U @ Vt
+    return R_ortho
+
+
+def compute_pose_error(gt_pose, est_pose, device="cpu"):
+    """
+    计算姿态误差（旋转和平移）
+    Args:
+        gt_pose: (4,4) torch.Tensor 或 numpy.ndarray, 真值位姿
+        est_pose: (4,4) torch.Tensor 或 numpy.ndarray, 估计位姿
+        device: str, 计算设备
+
+    Returns:
+        trans_error: float, 平移误差（米）
+        rot_error_deg: float, 旋转误差（角度）
+    """
+    if not isinstance(gt_pose, torch.Tensor):
+        gt_pose = torch.tensor(gt_pose, dtype=torch.float32, device=device)
+    if not isinstance(est_pose, torch.Tensor):
+        est_pose = torch.tensor(est_pose, dtype=torch.float32, device=device)
+
+    # 平移误差（欧式距离）
+    trans_error = torch.norm(gt_pose[:3, 3] - est_pose[:3, 3]).item()
+
+    # 旋转误差
+    R_gt = gt_pose[:3, :3]
+    R_est = est_pose[:3, :3]
+    dR = R_gt @ R_est.T
+    cos_angle = torch.clamp((torch.trace(dR) - 1) / 2, -1.0, 1.0)
+    rot_error_deg = (torch.acos(cos_angle) * 180.0 / torch.pi).item()
+
+    return trans_error, rot_error_deg
 
 
 def load_color_image(image_path):

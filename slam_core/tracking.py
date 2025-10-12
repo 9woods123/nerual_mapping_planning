@@ -13,7 +13,7 @@ import torch
 import numpy as np
 from slam_core.ray_casting import RayCasting
 from slam_core.renderer import Renderer
-from slam_core.se3_utils import se3_to_SE3
+from slam_core.se3_utils import se3_to_SE3,orthogonalize_rotation
 
 from network_model.loss_calculate import total_loss
 from utils.utils import save_loss_curve
@@ -58,7 +58,7 @@ class Tracker:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.delta_trans, "lr": self.lr},
-            {"params": self.delta_rot, "lr": self.lr},
+            {"params": self.delta_rot, "lr": 0.1 *self.lr},
         ])
 
         # 保存前两帧 pose（torch Tensor）
@@ -106,6 +106,10 @@ class Tracker:
             self.optimizer.state.clear()   # 清空动量、方差等历史   
 
 
+        print("track learning:    ","self.delta_trans:",self.delta_trans,"   self.delta_rot:",self.delta_rot )
+        best_loss = float('inf')
+        best_delta_rot = None
+        best_delta_trans = None
 
         losses = []
         for _ in range(self.iters):
@@ -113,7 +117,8 @@ class Tracker:
 
             pose_se3=torch.cat([self.delta_rot,self.delta_trans])
             pose_mat =  se3_to_SE3(pose_se3) @ pred_pose   # torch [4,4]
-            
+            # pose_mat[:3, :3] = orthogonalize_rotation(pose_mat[:3, :3])
+
             rays_3d, rgb_values, depths = self.ray_casting.cast_rays(depth, color, pose_mat,self.height, self.width)
             all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
                 ray_origin=pose_mat[:3, 3],
@@ -127,17 +132,24 @@ class Tracker:
             total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, rgb_values, rendered_depth,
                              all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
 
+
+            with torch.no_grad():
+                # 记录最优增量
+                if total_loss_value.item() < best_loss:
+                    best_loss = total_loss_value.item()
+                    best_delta_rot = self.delta_rot.clone().detach()
+                    best_delta_trans = self.delta_trans.clone().detach()
+
+
             total_loss_value.backward()
-
             self.optimizer.step()
-
-
             losses.append(total_loss_value.item())
 
 
-        pose_se3=torch.cat([self.delta_rot,self.delta_trans])
+        final_pose = se3_to_SE3(torch.cat([best_delta_rot, best_delta_trans])) @ pred_pose
 
-        final_pose = (se3_to_SE3(pose_se3) @ pred_pose).clone().detach()  # torch [4,4]
+
+
 
         save_loss_curve(losses, index, "./mlp_results/tracking_loss")
 

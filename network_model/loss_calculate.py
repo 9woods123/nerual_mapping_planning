@@ -102,43 +102,17 @@ def total_loss(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, p
     # print(f"[Shape] gt_depth: {gt_depth.shape}")
     # print(f"[Shape] pred_sdfs: {pred_sdfs.shape}")
 
-    loss_color = 20* color_loss(pred_rgb, gt_rgb)  # 颜色损失
+
+    loss_color = 2* color_loss(pred_rgb, gt_rgb)  # 颜色损失
     loss_depth = 10* depth_loss(surface_depths_tensor, pred_d)  # 深度损失
-    loss_surface = 5000* sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
-    loss_free = 1000*free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
+    loss_surface = 50* sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
+    loss_free = 50*free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
+
 
     total_loss_value = loss_color + loss_depth + loss_surface + loss_free
 
 
+
+
     return total_loss_value,loss_color,loss_depth,loss_surface,loss_free
 
-
-
-
-def total_loss_balanced(pred_rgb, gt_rgb, pred_d, observe_depth, surface_depths_tensor, pred_sdfs, eps=1e-6):
-    """
-    总损失计算，自动均衡各个分量权重
-    - 计算每个分量损失
-    - 根据各自的均方值自动归一化
-    - 返回加权总损失和每个分量
-    """
-    # === 单个损失 ===
-    loss_c = color_loss(pred_rgb, gt_rgb)
-    loss_d = depth_loss(surface_depths_tensor, pred_d)
-    loss_s = sdf_surface_loss(pred_sdfs, observe_depth, surface_depths_tensor)
-    loss_f = free_space_loss(pred_sdfs, surface_depths_tensor, observe_depth)
-
-    # === 自动归一化权重 ===
-    # 用每个损失的平方均值来计算权重，让梯度量级接近
-    weights = []
-    for l in [loss_c, loss_d, loss_s, loss_f]:
-        grad_proxy = torch.sqrt(torch.mean(l**2)) + eps  # 防止除零
-        weights.append(1.0 / grad_proxy)  # 倒数作为权重，使大值自动被缩小
-
-    weights = torch.tensor(weights, device=pred_rgb.device, dtype=pred_rgb.dtype)
-    weights = weights / torch.sum(weights)  # 归一化，总和为1
-
-    # === 加权总损失 ===
-    total = weights[0]*loss_c + weights[1]*loss_d + weights[2]*loss_s + weights[3]*loss_f
-
-    return total, weights[0]*loss_c, weights[1]*loss_d, weights[2]*loss_s, weights[3]*loss_f

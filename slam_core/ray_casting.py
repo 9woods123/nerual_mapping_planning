@@ -66,7 +66,7 @@ class RayCasting:
         u, v, depth = u[valid_mask], v[valid_mask], depth[valid_mask]
 
         pixel_coords = torch.stack([u.float(), v.float(), torch.ones_like(u, dtype=torch.float32)], dim=0)  # (3, N)
-        
+
         cam_coords = torch.linalg.inv(self.intrinsic_matrix) @ pixel_coords * depth  # (3, N)
         
         world_coords = (pose @ torch.cat([cam_coords, torch.ones(1, cam_coords.shape[1], device=self.device)], dim=0))  # (4, N)

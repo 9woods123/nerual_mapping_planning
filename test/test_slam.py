@@ -142,7 +142,7 @@ class FrameLoader:
 # ========================
 if __name__ == "__main__":
 
-    
+
     default_params = Params()
 
 
@@ -156,6 +156,7 @@ if __name__ == "__main__":
                          [0, fy, cy],
                          [0,  0,  1]], dtype=np.float32)
 
+
     # 畸变参数
     camera_distortion = np.array([
         default_params.camera.distortion.k1,
@@ -165,6 +166,8 @@ if __name__ == "__main__":
         default_params.camera.distortion.k3
     ], dtype=np.float32)
 
+
+
     # 帧加载器
     frame_loader = FrameLoader(
         "sensor_data/rgbd_dataset_freiburg1_360/rgb_renamed",
@@ -172,14 +175,15 @@ if __name__ == "__main__":
         camera_K,
         camera_distortion
     )
+    
+# rgbd_dataset_freiburg1_plant
 
-        # === 加载真值位姿 ===
+    # === 加载真值位姿 ===
     gt_file = "sensor_data/rgbd_dataset_freiburg1_360/groundtruth.txt"
     gt_poses = load_gt_poses(gt_file)
     print(f"Loaded {len(gt_poses)} ground truth poses")
     print("gt_poses[0]",gt_poses[0])
     slam = SLAM(default_params)
-
 
 
 

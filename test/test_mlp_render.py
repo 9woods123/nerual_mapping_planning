@@ -171,26 +171,3 @@ mesher.generate_surface_pointcloud(
     save_path="./output_surface.ply",
     device=device
 )
-
-
-# import open3d as o3d
-
-
-# # 假设 all_rays_endpoint_3d 是 (N, 3) torch.Tensor
-# points_np = all_rays_endpoint_3d.cpu().numpy()  # 转为 numpy
-
-# # 1️⃣ 射线终点点云
-# pcd = o3d.geometry.PointCloud()
-# pcd.points = o3d.utility.Vector3dVector(points_np)
-# pcd.paint_uniform_color([1.0, 0.0, 0.0])  # 红色
-
-# # 2️⃣ 世界原点坐标系
-# world_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0,0,0])
-
-# # 3️⃣ 相机初始 pose 坐标系
-# cam_coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
-# # init_pose 是 T_wc
-# cam_coord.transform(init_pose)
-
-# # 4️⃣ 可视化
-# o3d.visualization.draw_geometries([pcd, world_coord, cam_coord])

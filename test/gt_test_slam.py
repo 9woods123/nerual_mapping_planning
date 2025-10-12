@@ -112,10 +112,10 @@ if __name__ == "__main__":
     ], np.float32)
 
     # === ✅ 对齐三者 ===
-    data_path="sensor_data/rgbd_dataset_freiburg1_360/"
-    rgb_list = load_image_list("sensor_data/rgbd_dataset_freiburg1_360/rgb.txt")
-    depth_list = load_image_list("sensor_data/rgbd_dataset_freiburg1_360/depth.txt")
-    pose_list = load_poses("sensor_data/rgbd_dataset_freiburg1_360/groundtruth.txt")
+    data_path="sensor_data/rgbd_dataset_freiburg1_room/"
+    rgb_list = load_image_list("sensor_data/rgbd_dataset_freiburg1_room/rgb.txt")
+    depth_list = load_image_list("sensor_data/rgbd_dataset_freiburg1_room/depth.txt")
+    pose_list = load_poses("sensor_data/rgbd_dataset_freiburg1_room/groundtruth.txt")
 
     aligned_frames = align_rgb_depth_pose(rgb_list, depth_list, pose_list)
     print(f"有效对齐帧数: {len(aligned_frames)}")
