@@ -16,7 +16,7 @@ from slam_core.renderer import Renderer
 from slam_core.se3_utils import se3_to_SE3,orthogonalize_rotation
 
 from network_model.loss_calculate import total_loss
-from utils.utils import save_loss_curve
+from utils.utils import *
 
 class Tracker:
     def __init__(self, model, 
@@ -48,6 +48,8 @@ class Tracker:
                       [0, self.fy, self.cy],
                       [0, 0, 1]]),
             sample_ratio=self.sample_ratio,
+            height=self.height,
+            width=self.width,
             ignore_edge_W=self.ignore_edge_W,
             ignore_edge_H=self.ignore_edge_H
         )
@@ -90,7 +92,7 @@ class Tracker:
         self.last_pose = last_pose
 
 
-    def track(self, color, depth, is_first_frame, index):
+    def track(self, color, depth, is_first_frame, index ):
 
 
         # === 初始化位姿 ===
@@ -106,12 +108,15 @@ class Tracker:
             self.optimizer.state.clear()   # 清空动量、方差等历史   
 
 
-        print("track learning:    ","self.delta_trans:",self.delta_trans,"   self.delta_rot:",self.delta_rot )
         best_loss = float('inf')
         best_delta_rot = None
         best_delta_trans = None
 
         losses = []
+        
+        u_sampled,v_sampled = self.ray_casting.sample_pixels()
+
+
         for _ in range(self.iters):
             self.optimizer.zero_grad()
 
@@ -119,19 +124,15 @@ class Tracker:
             pose_mat =  se3_to_SE3(pose_se3) @ pred_pose   # torch [4,4]
             # pose_mat[:3, :3] = orthogonalize_rotation(pose_mat[:3, :3])
 
-            rays_3d, rgb_values, depths = self.ray_casting.cast_rays(depth, color, pose_mat,self.height, self.width)
-            all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
-                ray_origin=pose_mat[:3, 3],
-                rays_direction_world=rays_3d,
-                depths_list=depths
-            )
-            
-            pred_sdfs, pred_colors = self.model(all_points)
-            rendered_color, rendered_depth = self.renderer.render(all_depths, pred_sdfs, pred_colors)
 
-            total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, rgb_values, rendered_depth,
-                             all_depths, all_depths_end.unsqueeze(-1), pred_sdfs)
+            sampled_rgb, ray_points_3d, ray_points_depths, surface_points_3d, surface_points_depths = self.ray_casting.get_rays_points_from_pixels(
+                u_sampled, v_sampled, depth, color, pose_mat)
 
+            pred_sdfs, pred_colors = self.model(ray_points_3d)
+            rendered_color, rendered_depth = self.renderer.render(ray_points_depths, pred_sdfs, pred_colors)
+
+            total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, sampled_rgb, rendered_depth,
+                             ray_points_depths, surface_points_depths.unsqueeze(-1), pred_sdfs)
 
             with torch.no_grad():
                 # 记录最优增量
@@ -149,6 +150,16 @@ class Tracker:
         final_pose = se3_to_SE3(torch.cat([best_delta_rot, best_delta_trans])) @ pred_pose
 
 
+
+        visualize_sparse_render(
+            u_sampled,
+            v_sampled,
+            rendered_color,
+            rendered_depth,
+            color,
+            depth,
+            save_dir="./mlp_results/tracking_img", index=index
+        )
 
 
         save_loss_curve(losses, index, "./mlp_results/tracking_loss")

@@ -73,8 +73,8 @@ class Mapper:
                       [0, self.fy, self.cy],
                       [0, 0, 1]]),
             sample_ratio=self.sample_ratio,
-            ignore_edge_W=0,
-            ignore_edge_H=0
+            height=self.height,
+            width=self.width
         )
 
 
@@ -129,35 +129,17 @@ class Mapper:
                 pose_se3= torch.cat([self.delta_rot[j],self.delta_trans[j]])
                 pose_mat = se3_to_SE3(pose_se3) @ kf.c2w
 
-                # --- timing breakdown ---
-                t0 = time.time()
-                rays_3d, rgb_values, depths = self.ray_casting.cast_rays(
-                    kf.depth, kf.color, pose_mat, self.height, self.width
-                )
-                t1 = time.time()
-                all_points, all_depths, all_endpoints_3d, all_depths_end = self.ray_casting.sample_points_along_ray(
-                    ray_origin=pose_mat[:3, 3],
-                    rays_direction_world=rays_3d,
-                    depths_list=depths
-                )
-                t2 = time.time()
+                u_sampled,v_sampled = self.ray_casting.sample_pixels()
 
-                pred_sdfs, pred_colors = self.model(all_points)
-                
-                t3 = time.time()
-                
-                rendered_color, rendered_depth = self.renderer.render(
-                    all_depths, pred_sdfs, pred_colors
-                )
-                
-                t4 = time.time()
-                
-                total_loss_value, loss_color, loss_depth, loss_surface, loss_free = total_loss(
-                    rendered_color, rgb_values, rendered_depth,
-                    all_depths, all_depths_end.unsqueeze(-1), pred_sdfs
-                )
-                
-                t5 = time.time()
+                sampled_rgb, ray_points_3d, ray_points_depths, surface_points_3d, surface_points_depths = self.ray_casting.get_rays_points_from_pixels(
+                    u_sampled, v_sampled, kf.depth, kf.color, pose_mat)
+
+                pred_sdfs, pred_colors = self.model(ray_points_3d)
+                rendered_color, rendered_depth = self.renderer.render(ray_points_depths, pred_sdfs, pred_colors)
+
+                total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, sampled_rgb, rendered_depth,
+                                ray_points_depths, surface_points_depths.unsqueeze(-1), pred_sdfs)
+
 
                 BA_loss += total_loss_value
 
@@ -176,12 +158,6 @@ class Mapper:
 
             # print(f"[Iter {i}] BA_loss={BA_loss.item():.6f}, total_time={iter_end-iter_start:.3f}s")
 
-        print(      f"\n[Loss ]"
-            f"\n  🎨 Color   : {loss_color.item():.6f}"
-            f"\n  📏 Depth   : {loss_depth.item():.6f}"
-            f"\n  🧩 Surface : {loss_surface.item():.6f}"
-            f"\n  🌌 Free    : {loss_free.item():.6f}"
-            f"\n  🔥 Total   : {total_loss_value.item():.6f}\n")
         
         with torch.no_grad():
             # 优化完成后，把 delta_se3s 应用到关键帧的 c2w

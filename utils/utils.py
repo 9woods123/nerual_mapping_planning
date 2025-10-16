@@ -10,6 +10,78 @@ matplotlib.use("Agg")  # 使用无界面的后端
 import os
 
 import torch
+   # === 可视化 ===
+
+def visualize_sparse_render(u, v, rendered_color, rendered_depth, color_input, depth_input, save_dir=None, index=None):
+    
+        # 确保 detach + cpu
+    def to_numpy(x):
+        if isinstance(x, torch.Tensor):
+            return x.detach().cpu().numpy()
+        return x
+
+    rendered_color = to_numpy(rendered_color)
+    rendered_depth = to_numpy(rendered_depth)
+    color_input = to_numpy(color_input)
+    depth_input = to_numpy(depth_input)
+    u           = to_numpy(u)
+    v           = to_numpy(v)
+
+
+
+
+    depth = depth_input[v, u]
+
+    # 过滤掉无效深度
+    valid_mask = depth > 0
+    u, v, depth = u[valid_mask], v[valid_mask], depth[valid_mask]
+
+    print("rendered_color.shape:", rendered_color.shape)
+    print("rendered_depth.shape:", rendered_depth.shape)
+    print("color_input.shape:", color_input.shape)
+    print("depth_input.shape:", depth_input.shape)
+    print("u.shape:", u.shape, "v.shape:", v.shape)
+    
+    H, W = depth_input.shape[:2]
+
+    # 初始化整图
+    rendered_color_img = np.zeros((H, W, 3), dtype=np.float32)
+    rendered_depth_img = np.zeros((H, W), dtype=np.float32)
+
+    # 颜色直接赋值
+    rendered_color_img[v, u] = rendered_color
+    # 深度 flatten
+    rendered_depth_img[v, u] = rendered_depth.flatten()
+    # color uint8
+    color_input_uint8 = (np.clip(color_input, 0, 1) * 255).astype(np.uint8)
+    rendered_color_uint8 = (np.clip(rendered_color_img, 0, 1) * 255).astype(np.uint8)
+
+    # depth 伪彩色
+    def depth_to_uint8(depth):
+        depth_min = np.nanmin(depth)
+        depth_max = np.nanmax(depth)
+        depth_norm = (depth - depth_min) / (depth_max - depth_min + 1e-8)
+        return cv2.applyColorMap((depth_norm * 255).astype(np.uint8), cv2.COLORMAP_JET)
+
+    depth_input_colormap = depth_to_uint8(depth_input)
+    rendered_depth_colormap = depth_to_uint8(rendered_depth_img)
+
+    # 拼接显示
+    color_concat = np.hstack([color_input_uint8, rendered_color_uint8])
+    depth_concat = np.hstack([depth_input_colormap, rendered_depth_colormap])
+    combined = np.vstack([color_concat, depth_concat])
+
+    # 显示
+    cv2.imshow("Color/Depth: Original | Rendered", combined)
+    cv2.waitKey(1)
+
+    # === ✅ 保存 ===
+    if save_dir is not None:
+        os.makedirs(save_dir, exist_ok=True)
+        frame_name = f"frame_{index:04d}.png" if index is not None else "rendered_result.png"
+        save_path = os.path.join(save_dir, frame_name)
+        cv2.imwrite(save_path, combined)
+        print(f"[Visualize] Saved to {save_path}")
 
 
 def orthogonalize_rotation(R: torch.Tensor) -> torch.Tensor:

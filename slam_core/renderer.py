@@ -16,7 +16,7 @@ class Renderer:
         """
         
 
-        weights = self.compute_weights(sdf_values)  # (N_rays, N_samples)
+        weights = self.compute_weights(sdf_values,depth_values)  # (N_rays, N_samples)
 
         weights_sum = torch.sum(weights, dim=1) + 1e-8  # 防止除零
 
@@ -41,7 +41,7 @@ class Renderer:
         return rendered_color, rendered_depth
 
 
-    def compute_weights(self, sdf_values):
+    def compute_weights(self, sdf_values,depth_values):
         # 使用 SDF 计算权重
         sigmoid1 = torch.sigmoid(sdf_values / self.tr)
         sigmoid2 = torch.sigmoid(-sdf_values / self.tr)
@@ -49,7 +49,37 @@ class Renderer:
         # sigmoid2 = torch.sigmoid(-sdf_values)
         weights = sigmoid1 * sigmoid2
 
+        # 2. 找到沿每条射线第一次穿过表面的索引
+        # signs: 相邻采样点 SDF 符号相乘
+        signs = sdf_values[:, 1:] * sdf_values[:, :-1]  # [N_rays, N_samples-1]
+
+        mask_surface = (signs < 0).float()  # 符号翻转位置标记 1
+        first_surface_idx = torch.argmax(mask_surface, dim=1)  # [N_rays]
+
+
+        # 3. 对应深度
+        first_surface_idx_clamped = torch.clamp(first_surface_idx, max=depth_values.shape[1]-1)
+
+
+
+        inds = first_surface_idx_clamped.long()  # [N_rays, 1]
+
+
+
+        z_min = torch.gather(depth_values, 1, inds)  # [N_rays,1]
+
+        # 4. 屏蔽第一次表面后的点
+        mask = (depth_values <= z_min +  self.tr).float()  # [N_rays, N_samples]
+
+
+
+        weights = weights * mask.unsqueeze(-1)
+
+        # 5. 归一化
+        weights = weights / (torch.sum(weights, dim=-1, keepdim=True) + 1e-8)
+
         return weights
+
 
 
     @torch.no_grad()

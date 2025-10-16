@@ -8,6 +8,8 @@ class RayCasting:
                 M_c=20, 
                 M_f=10, 
                 d_s=0.05, 
+                height=640,
+                width=480,
                 ignore_edge_W=None,
                 ignore_edge_H=None,
                 device="cuda"):
@@ -23,6 +25,9 @@ class RayCasting:
         self.M_f = M_f
         self.d_s = d_s
         self.device = device
+
+        self.height=height
+        self.width=width
 
         # 新增
         self.ignore_edge_W = ignore_edge_W
@@ -50,6 +55,11 @@ class RayCasting:
         v_sampled = sampled_uv[:, 1]
         return u_sampled, v_sampled
     
+
+
+
+
+
     def cast_rays(self, depth_map, color_map, pose, height, width):
         """
         通过深度图和彩色图生成射线 (Torch版)
@@ -149,3 +159,40 @@ class RayCasting:
         # print("endpoints_depths:", endpoints_depths.shape)
 
         return all_points, all_depths, endpoints_3d, endpoints_depths
+
+
+
+    def sample_pixels(self):
+        return self._sample_pixels(self.height,self.width)
+
+
+
+    def get_rays_points_from_pixels(self, u_sampled, v_sampled, depth_map, color_map, pose_mat):
+        
+        u,v = u_sampled,v_sampled
+
+
+        depth = depth_map[v.long(), u.long()]
+
+        # 过滤掉无效深度
+        valid_mask = depth > 0
+        u, v, depth = u[valid_mask], v[valid_mask], depth[valid_mask]
+
+        pixel_coords = torch.stack([u.float(), v.float(), torch.ones_like(u, dtype=torch.float32)], dim=0)  # (3, N)
+
+        cam_coords = torch.linalg.inv(self.intrinsic_matrix) @ pixel_coords * depth  # (3, N)
+        
+        world_coords = (pose_mat @ torch.cat([cam_coords, torch.ones(1, cam_coords.shape[1], device=self.device)], dim=0))  # (4, N)
+
+
+
+        sampled_rgb = color_map[v, u]  # (N, 3)
+
+
+        # return world_coords[:3].T, rgb, depth
+ 
+
+        ray_points_3d, ray_points_depths, surface_points_3d, surface_points_depths=self.sample_points_along_ray(pose_mat[:3, 3], world_coords[:3].T, depth)
+        
+
+        return sampled_rgb, ray_points_3d, ray_points_depths, surface_points_3d, surface_points_depths 
