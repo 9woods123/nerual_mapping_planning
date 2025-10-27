@@ -60,7 +60,7 @@ class Tracker:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.delta_trans, "lr": self.lr},
-            {"params": self.delta_rot, "lr": 1 *self.lr},
+            {"params": self.delta_rot, "lr": 0.1 *self.lr},
         ])
 
         # 保存前两帧 pose（torch Tensor）

@@ -90,7 +90,7 @@ class Mapper:
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": self.mapping_lr},
             {"params": self.delta_trans, "lr": 1*self.tracking_lr},
-            {"params": self.delta_rot, "lr": 1*self.tracking_lr},
+            {"params": self.delta_rot, "lr": 0.1*self.tracking_lr},
         ])
 
 
@@ -134,7 +134,8 @@ class Mapper:
                 sampled_rgb, ray_points_3d, ray_points_depths, surface_points_3d, surface_points_depths = self.ray_casting.get_rays_points_from_pixels(
                     u_sampled, v_sampled, kf.depth, kf.color, pose_mat)
 
-                pred_sdfs, pred_colors = self.model(ray_points_3d)
+                pred_sdfs, pred_colors = self.infer_in_chunks(ray_points_3d, chunk_size=32768)
+
                 rendered_color, rendered_depth = self.renderer.render(ray_points_depths, pred_sdfs, pred_colors)
 
                 total_loss_value,loss_color,loss_depth,loss_surface,loss_free = total_loss(rendered_color, sampled_rgb, rendered_depth,
@@ -143,8 +144,6 @@ class Mapper:
 
                 BA_loss += total_loss_value
 
-
-                
                 # print per-frame time
                 # print(f"[Keyframe {j}] cast={t1-t0:.3f}s, sample={t2-t1:.3f}s, "
                 #     f"model={t3-t2:.3f}s, render={t4-t3:.3f}s, loss={t5-t4:.3f}s, total={t5-kf_start:.3f}s")
@@ -179,3 +178,12 @@ class Mapper:
 
         return BA_loss.item(),joint_opt_pose_latest
 
+    def infer_in_chunks(self, x, chunk_size=32768):
+        outputs_sdf = []
+        outputs_color = []
+        for i in range(0, x.shape[0], chunk_size):
+            chunk = x[i:i+chunk_size]
+            sdf, color = self.model(chunk)
+            outputs_sdf.append(sdf)
+            outputs_color.append(color)
+        return torch.cat(outputs_sdf, dim=0), torch.cat(outputs_color, dim=0)

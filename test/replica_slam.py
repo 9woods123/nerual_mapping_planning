@@ -94,8 +94,9 @@ def run_replica_slam_stream(data_dir, mesh_output_dir="./meshes_replica", device
     print(f"[INFO] Replica frames: {len(color_paths)}")
 
     # === 主循环 ===
-    for i, (rgb_path, depth_path, pose_np) in enumerate(zip(color_paths, depth_paths, poses)):
-        print(f"\n[Frame {i+1}/{len(color_paths)}] {os.path.basename(rgb_path)}")
+    start_idx = 535  # 从第535帧开始
+    for i, (rgb_path, depth_path, pose_np) in enumerate(zip(color_paths[start_idx:], depth_paths[start_idx:], poses[start_idx:]), start=start_idx):
+        print(f"\n[Frame {i}/{len(color_paths)}] {os.path.basename(rgb_path)}")
 
         # --- 每帧单独加载 ---
         color = load_color_image_to_tensor(rgb_path, device=device)
@@ -103,10 +104,10 @@ def run_replica_slam_stream(data_dir, mesh_output_dir="./meshes_replica", device
 
         pose = torch.from_numpy(pose_np).to(device).float()
 
-        # --- 进入主循环 ---
+        # --- 主循环 ---
         slam.main_loop(color, depth, pose, i + 1, mesh_output_dir=mesh_output_dir)
 
-        # --- 手动释放显存 ---
+        # --- 释放显存 ---
         del color, depth, pose
         torch.cuda.empty_cache()
 
