@@ -14,18 +14,27 @@ import os
 # ---------------- 默认参数 ----------------
 
 # Freiburg 1 RGB 	517.3 	516.5 	318.6 	255.3 	0.2624	-0.9531	-0.0054	0.0026 	1.1633 
-
-
+# {  repica
+#     "camera": {
+#         "w": 1200,
+#         "h": 680,
+#         "fx": 600.0,
+#         "fy": 600.0,
+#         "cx": 599.5,
+#         "cy": 339.5,
+#         "scale": 6553.5
+#     }
+# }
 camera_params = {
-    "fx": 517.3,
-    "fy": 516.5,
-    "cx": 318.6,
-    "cy": 255.3,
+    "fx": 600.0,
+    "fy": 600.0,
+    "cx": 599.5,
+    "cy": 339.5,
 
-    "width": 640,
-    "height": 480,
+    "width": 1200,
+    "height": 680,
     "near": 0.2,
-    "far": 2.5,
+    "far": 3.5,
     "distortion": {
         "k1": 0.2624,
         "k2": -0.9531,
@@ -34,6 +43,25 @@ camera_params = {
         "k3": 1.1633
     },
 }
+
+# camera_params = {
+#     "fx": 517.3,
+#     "fy": 516.5,
+#     "cx": 318.6,
+#     "cy": 255.3,
+
+#     "width": 640,
+#     "height": 480,
+#     "near": 0.2,
+#     "far": 2.5,
+#     "distortion": {
+#         "k1": 0.2624,
+#         "k2": -0.9531,
+#         "p1": -0.0054,
+#         "p2": 0.0026,
+#         "k3": 1.1633
+#     },
+# }
 
 
 bounding_box ={
@@ -53,16 +81,16 @@ mapping_params = {
     "batch_size": 65536,
     "lr": 0.001,         # Mapper 学习率
     "iters": 50,       # Mapper 内部优化迭代次数
-    "sample_ratio": 0.075,  # 对输入图像下采样比例
-    "mesh_every":20,
+    "sample_ratio": 0.0001,  # 对输入图像下采样比例
+    "mesh_every":100,
     "keyframe_every":5,
 }
 
 
 tracking_params = {
-    "lr": 0.001,           # 优化位姿学习率
+    "lr": 0.01,           # 优化位姿学习率
     "iters": 35,          # 位姿优化迭代次数
-    "sample_ratio": 0.075,  # 对输入图像下采样比例
+    "sample_ratio": 0.0001,  # 对输入图像下采样比例
     "ignore_edge_H":20,
     "ignore_edge_W":20
 }

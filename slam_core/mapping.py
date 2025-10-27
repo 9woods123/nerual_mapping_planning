@@ -90,7 +90,7 @@ class Mapper:
         self.optimizer = torch.optim.Adam([
             {"params": self.model.parameters(), "lr": self.mapping_lr},
             {"params": self.delta_trans, "lr": 1*self.tracking_lr},
-            {"params": self.delta_rot, "lr": 0.1*self.tracking_lr},
+            {"params": self.delta_rot, "lr": 1*self.tracking_lr},
         ])
 
 

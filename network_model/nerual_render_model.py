@@ -210,7 +210,7 @@ class SimpleMLPModel(nn.Module):
         
         ## normlize to [-1,1]
 
-        x=x/20.0
+        x=x/5.0
 
         x_pe = self.pe(x)
         features = self.mlp_block(x_pe)

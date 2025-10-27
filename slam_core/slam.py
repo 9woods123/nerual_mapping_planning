@@ -73,15 +73,12 @@ class SLAM:
                               self.params.camera.near, 
                               self.params.camera.far)
 
-        print("Default dtype:", torch.get_default_dtype())
-        print("CUDA dtype (float32 == True?):", torch.tensor([1.0], device="cuda").dtype)
-
 
 
     def main_loop(self, color, depth, gt_pose, index, mesh_output_dir="./"):
         timestamp = time.time()
 
-        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index)
+        track_loss, track_pose = self.tracker.track(color, depth, self.is_first_frame,index,gt_pose)
 
         # track_loss=0
         # track_pose=gt_pose

@@ -13,7 +13,7 @@ import torch
 import numpy as np
 from slam_core.ray_casting import RayCasting
 from slam_core.renderer import Renderer
-from slam_core.se3_utils import se3_to_SE3,orthogonalize_rotation
+from slam_core.se3_utils import se3_to_SE3,orthogonalize_rotation,SE3_to_se3
 
 from network_model.loss_calculate import total_loss
 from utils.utils import *
@@ -60,7 +60,7 @@ class Tracker:
 
         self.optimizer = torch.optim.Adam([
             {"params": self.delta_trans, "lr": self.lr},
-            {"params": self.delta_rot, "lr": 0.1 *self.lr},
+            {"params": self.delta_rot, "lr": 1 *self.lr},
         ])
 
         # 保存前两帧 pose（torch Tensor）
@@ -92,7 +92,7 @@ class Tracker:
         self.last_pose = last_pose
 
 
-    def track(self, color, depth, is_first_frame, index ):
+    def track(self, color, depth, is_first_frame, index,gt_pose):
 
 
         # === 初始化位姿 ===
@@ -117,12 +117,31 @@ class Tracker:
         u_sampled,v_sampled = self.ray_casting.sample_pixels()
 
 
+
+        curr_se3 = SE3_to_se3(pred_pose)  # [6]
+        # 拆分旋转和平移部分，并设为可优化参数
+        self.curr_rot = torch.nn.Parameter(curr_se3[:3].clone().detach())
+        self.curr_trans = torch.nn.Parameter(curr_se3[3:].clone().detach())
+
+        # 定义优化器
+        self.optimizer = torch.optim.Adam([
+            {"params": [self.curr_rot], "lr": self.lr * 0.1},
+            {"params": [self.curr_trans], "lr": self.lr},
+        ])
+
+
+
+
         for _ in range(self.iters):
             self.optimizer.zero_grad()
 
-            pose_se3=torch.cat([self.delta_rot,self.delta_trans])
-            pose_mat =  se3_to_SE3(pose_se3) @ pred_pose   # torch [4,4]
+            # pose_se3=torch.cat([self.delta_rot,self.delta_trans])
+            # pose_mat =  se3_to_SE3(pose_se3) @ pred_pose   # torch [4,4]
             # pose_mat[:3, :3] = orthogonalize_rotation(pose_mat[:3, :3])
+
+            pose_se3=torch.cat([self.curr_rot,self.curr_trans])
+            pose_mat =  se3_to_SE3(pose_se3)
+
 
 
             sampled_rgb, ray_points_3d, ray_points_depths, surface_points_3d, surface_points_depths = self.ray_casting.get_rays_points_from_pixels(
@@ -147,19 +166,19 @@ class Tracker:
             losses.append(total_loss_value.item())
 
 
-        final_pose = se3_to_SE3(torch.cat([best_delta_rot, best_delta_trans])) @ pred_pose
+        # final_pose = se3_to_SE3(torch.cat([best_delta_rot, best_delta_trans])) @ pred_pose
 
+        final_pose = se3_to_SE3(torch.cat([self.curr_rot,self.curr_trans])) 
 
-
-        visualize_sparse_render(
-            u_sampled,
-            v_sampled,
-            rendered_color,
-            rendered_depth,
-            color,
-            depth,
-            save_dir="./mlp_results/tracking_img", index=index
-        )
+        # visualize_sparse_render(
+        #     u_sampled,
+        #     v_sampled,
+        #     rendered_color,
+        #     rendered_depth,
+        #     color,
+        #     depth,
+        #     save_dir="./mlp_results/tracking_img", index=index
+        # )
 
 
         save_loss_curve(losses, index, "./mlp_results/tracking_loss")

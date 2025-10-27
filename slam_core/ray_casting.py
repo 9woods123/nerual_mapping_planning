@@ -5,8 +5,8 @@ class RayCasting:
 
     def __init__(self, intrinsic_matrix,  
                 sample_ratio=0.001, 
-                M_c=20, 
-                M_f=10, 
+                M_c=32, 
+                M_f=12, 
                 d_s=0.05, 
                 height=640,
                 width=480,
